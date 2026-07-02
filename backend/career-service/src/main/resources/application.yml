@@ -1,0 +1,39 @@
+server:
+  port: ${SERVER_PORT:8002}
+
+spring:
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/skillbridge_db}
+    username: ${SPRING_DATASOURCE_USERNAME:skillbridge}
+    password: ${SPRING_DATASOURCE_PASSWORD:password}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        default_schema: career
+  flyway:
+    enabled: true
+    schemas: career
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+  cache:
+    type: caffeine
+    caffeine:
+      spec: maximumSize=500,expireAfterWrite=86400s
+
+jwt:
+  secret: ${JWT_SECRET}
+
+anthropic:
+  api-key: ${ANTHROPIC_API_KEY}
+  model: claude-sonnet-4-6
+  max-tokens: 4096
+
+claude:
+  connect-timeout-ms: 15000
+  read-timeout-ms: 120000
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui/index.html
