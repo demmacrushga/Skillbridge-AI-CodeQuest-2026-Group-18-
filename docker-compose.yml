@@ -1,0 +1,83 @@
+services:
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: skillbridge-postgres
+    environment:
+      POSTGRES_DB: skillbridge_db
+      POSTGRES_USER: skillbridge
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - skillbridge-network
+
+
+  auth-service:
+    build:
+      context: ./backend/auth-service
+    container_name: auth-service
+    depends_on:
+      - postgres
+    environment:
+      SERVER_PORT: 8001
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/skillbridge_db
+      SPRING_DATASOURCE_USERNAME: skillbridge
+      SPRING_DATASOURCE_PASSWORD: password
+      JWT_SECRET: change_this_secret
+    ports:
+      - "8001:8001"
+    networks:
+      - skillbridge-network
+
+
+  career-service:
+    build:
+      context: ./backend/career-service
+    container_name: career-service
+    depends_on:
+      - postgres
+    environment:
+      SERVER_PORT: 8002
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/skillbridge_db
+      SPRING_DATASOURCE_USERNAME: skillbridge
+      SPRING_DATASOURCE_PASSWORD: password
+      JWT_SECRET: change_this_secret
+      ANTHROPIC_API_KEY: your_api_key_here
+    ports:
+      - "8002:8002"
+    networks:
+      - skillbridge-network
+
+
+  skill-gap-service:
+    build:
+      context: ./backend/skill-gap-service
+    container_name: skill-gap-service
+    depends_on:
+      - postgres
+    environment:
+      SERVER_PORT: 8003
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/skillbridge_db
+      SPRING_DATASOURCE_USERNAME: skillbridge
+      SPRING_DATASOURCE_PASSWORD: password
+      JWT_SECRET: change_this_secret
+      ANTHROPIC_API_KEY: your_api_key_here
+      FILE_UPLOAD_DIR: /app/uploads
+    ports:
+      - "8003:8003"
+    volumes:
+      - uploads:/app/uploads
+    networks:
+      - skillbridge-network
+
+
+volumes:
+  postgres-data:
+  uploads:
+
+
+networks:
+  skillbridge-network:
