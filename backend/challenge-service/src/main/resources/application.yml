@@ -1,0 +1,29 @@
+server:
+  port: ${SERVER_PORT:8007}
+
+spring:
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/skillbridge_db}
+    username: ${SPRING_DATASOURCE_USERNAME:skillbridge}
+    password: ${SPRING_DATASOURCE_PASSWORD:password}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        default_schema: challenge
+  flyway:
+    enabled: true
+    schemas: challenge
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+  jackson:
+    mapper:
+      accept-case-insensitive-enums: false
+
+jwt:
+  secret: ${JWT_SECRET}
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui/index.html

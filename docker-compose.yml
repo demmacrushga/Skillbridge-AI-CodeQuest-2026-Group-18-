@@ -117,27 +117,63 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-      whisper-service:
+  challenge-service:
+    build:
+      context: ./backend/challenge-service
+      dockerfile: Dockerfile
+      network: host
+    container_name: skillbridge-challenge
+    ports:
+      - "8007:8007"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
+      SERVER_PORT: 8007
+    depends_on:
+      postgres:
         condition: service_healthy
 
-  # whisper-service:
-  #   # TODO: pin to a specific digest before prod for reproducible local dev (plan FR-014 note)
-  #   image: onerahmet/openai-whisper-asr-webservice:latest
-  #   container_name: skillbridge-whisper
-  #   ports:
-  #     - "9006:9000"
-  #   environment:
-  #     ASR_MODEL: small
-  #     ASR_ENGINE: faster_whisper
-  #   volumes:
-  #     - whisper-model-cache:/root/.cache/huggingface
-  #   restart: unless-stopped
-  #   healthcheck:
-  #     test: ["CMD-SHELL", "python3 -c \"import urllib.request; urllib.request.urlopen('http://localhost:9000/openapi.json')\""]
-  #     interval: 15s
-  #     timeout: 5s
-  #     retries: 5
-  #     start_period: 60s
+  whisper-service:
+        condition: service_healthy
+
+  matching-service:
+    build:
+      context: ./backend/matching-service
+      dockerfile: Dockerfile
+      network: host
+    container_name: skillbridge-matching
+    ports:
+      - "8006:8006"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
+      SERVER_PORT: 8006
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  whisper-service:
+    # TODO: pin to a specific digest before prod for reproducible local dev (plan FR-014 note)
+    image: onerahmet/openai-whisper-asr-webservice:latest
+    container_name: skillbridge-whisper
+    ports:
+      - "9006:9000"
+    environment:
+      ASR_MODEL: small
+      ASR_ENGINE: faster_whisper
+    volumes:
+      - whisper-model-cache:/root/.cache/huggingface
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "python3 -c \"import urllib.request; urllib.request.urlopen('http://localhost:9000/openapi.json')\""]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
 
   gateway:
     image: nginx:alpine
@@ -152,6 +188,8 @@ services:
       - skill-gap-service
       - portfolio-service
       - mock-interview-service
+      - matching-service
+      - challenge-service
 
 volumes:
   postgres_data:
