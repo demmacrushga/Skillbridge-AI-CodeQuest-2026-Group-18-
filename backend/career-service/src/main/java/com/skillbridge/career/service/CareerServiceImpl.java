@@ -1,5 +1,6 @@
 package com.skillbridge.career.service;
 
+import com.skillbridge.career.client.NotificationClient;
 import com.skillbridge.career.dto.request.CompleteMilestoneRequest;
 import com.skillbridge.career.dto.request.GenerateRoadmapRequest;
 import com.skillbridge.career.dto.response.CareerPathResponse;
@@ -16,6 +17,7 @@ import com.skillbridge.career.exception.RoadmapNotFoundException;
 import com.skillbridge.career.repository.*;
 import com.skillbridge.career.service.dto.MilestoneTemplate;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,6 +29,7 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class CareerServiceImpl implements CareerService {
 
     private final CareerPathRepository careerPathRepository;
@@ -34,6 +37,7 @@ public class CareerServiceImpl implements CareerService {
     private final MilestoneRepository milestoneRepository;
     private final MilestoneCompletionRepository completionRepository;
     private final ClaudeService claudeService;
+    private final NotificationClient notificationClient;
 
     @Override
     @Transactional
@@ -132,6 +136,17 @@ public class CareerServiceImpl implements CareerService {
         int progressPercent = totalCount == 0 ? 0 : (int) ((completedCount * 100L) / totalCount);
         roadmap.setProgressPercent(progressPercent);
         roadmapRepository.save(roadmap);
+
+        try {
+            notificationClient.notify(
+                    requestingUserId,
+                    "ROADMAP_MILESTONE",
+                    "Milestone complete 🎉",
+                    String.format("You've completed %s — %d%% of your roadmap done.",
+                            milestone.getTitle(), progressPercent));
+        } catch (Exception e) {
+            log.warn("Failed to send roadmap milestone notification: {}", e.getMessage());
+        }
 
         return new CompletionResponse(toMilestoneResponse(milestone, true), progressPercent);
     }

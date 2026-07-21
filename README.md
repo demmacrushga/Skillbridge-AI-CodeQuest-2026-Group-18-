@@ -171,8 +171,8 @@ Make sure you have the following installed before continuing:
 ### 1. Clone the repository
 
 ```bash
-git clone https://github.com/demmacrushga/Skillbridge-AI-CodeQuest-2026-Group-18-.git
-cd Skillbridge-AI-CodeQuest-2026-Group-18-
+git clone https://github.com/knust-cs-group18/skillbridge-ai.git
+cd skillbridge-ai
 ```
 
 ### 2. Configure environment variables

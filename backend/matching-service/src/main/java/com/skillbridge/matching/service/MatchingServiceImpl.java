@@ -16,6 +16,7 @@ import com.skillbridge.matching.entity.OpportunitySkill;
 import com.skillbridge.matching.entity.StudentSkill;
 import com.skillbridge.matching.exception.DuplicateApplicationException;
 import com.skillbridge.matching.exception.OpportunityNotFoundException;
+import com.skillbridge.matching.client.NotificationClient;
 import com.skillbridge.matching.repository.ApplicationRepository;
 import com.skillbridge.matching.repository.OpportunityRepository;
 import com.skillbridge.matching.repository.StudentSkillRepository;
@@ -25,6 +26,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -40,10 +42,14 @@ import java.util.stream.Collectors;
 @Slf4j
 public class MatchingServiceImpl implements MatchingService {
 
+    private static final BigDecimal MATCH_NOTIFY_THRESHOLD = new BigDecimal("50.00");
+    private static final int MATCH_NOTIFY_CAP = 100;
+
     private final OpportunityRepository opportunityRepository;
     private final ApplicationRepository applicationRepository;
     private final StudentSkillRepository studentSkillRepository;
     private final MatchScoringService matchScoringService;
+    private final NotificationClient notificationClient;
 
     @Override
     @Transactional
@@ -70,7 +76,50 @@ public class MatchingServiceImpl implements MatchingService {
         Opportunity saved = opportunityRepository.save(opportunity);
         log.info("Opportunity posted id={} type={} external={}", saved.getId(),
                 saved.getOpportunityType(), saved.getExternalUrl() != null);
+
+        notifyMatchingStudents(saved);
+
         return toOpportunityResponse(saved, 0L);
+    }
+
+    private void notifyMatchingStudents(Opportunity opportunity) {
+        try {
+            List<UUID> distinctStudentIds = studentSkillRepository.findDistinctStudentIds();
+            if (distinctStudentIds.isEmpty()) {
+                return;
+            }
+
+            record ScoredStudent(UUID studentId, BigDecimal score) {
+            }
+
+            List<ScoredStudent> qualifying = distinctStudentIds.stream()
+                    .map(studentId -> {
+                        Set<String> skills = studentSkillRepository.findByStudentId(studentId).stream()
+                                .map(s -> MatchScoringService.normalize(s.getSkillName()))
+                                .collect(Collectors.toSet());
+                        return new ScoredStudent(studentId, matchScoringService.score(opportunity, skills));
+                    })
+                    .filter(ss -> ss.score().compareTo(MATCH_NOTIFY_THRESHOLD) >= 0)
+                    .sorted(Comparator.comparing(ScoredStudent::score).reversed())
+                    .limit(MATCH_NOTIFY_CAP)
+                    .toList();
+
+            int skipped = distinctStudentIds.size() - qualifying.size();
+            if (skipped > 0) {
+                log.info("Opportunity match notification skipped {} students below threshold or over cap", skipped);
+            }
+
+            for (ScoredStudent ss : qualifying) {
+                notificationClient.notify(
+                        ss.studentId(),
+                        "OPPORTUNITY_MATCH",
+                        "New opportunity matches your skills",
+                        String.format("%s at %s — %s%% match.",
+                                opportunity.getTitle(), opportunity.getCompanyName(), ss.score()));
+            }
+        } catch (Exception e) {
+            log.warn("Failed to send opportunity match notifications: {}", e.getMessage());
+        }
     }
 
     @Override

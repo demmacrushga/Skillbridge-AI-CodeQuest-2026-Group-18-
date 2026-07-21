@@ -9,6 +9,7 @@ import com.skillbridge.challenge.dto.response.LeaderboardResponse;
 import com.skillbridge.challenge.dto.response.MySubmissionResponse;
 import com.skillbridge.challenge.dto.response.SubmissionResponse;
 import com.skillbridge.challenge.dto.response.SubmissionReviewResponse;
+import com.skillbridge.challenge.client.NotificationClient;
 import com.skillbridge.challenge.entity.Challenge;
 import com.skillbridge.challenge.entity.Submission;
 import com.skillbridge.challenge.exception.ChallengeNotFoundException;
@@ -40,6 +41,7 @@ class ChallengeServiceImplTest {
     @Mock ChallengeRepository challengeRepository;
     @Mock SubmissionRepository submissionRepository;
     @Mock LeaderboardService leaderboardService;
+    @Mock NotificationClient notificationClient;
 
     @InjectMocks ChallengeServiceImpl challengeService;
 
@@ -356,6 +358,51 @@ class ChallengeServiceImplTest {
                 CHALLENGE_ID, SUBMISSION_ID,
                 new ScoreSubmissionRequest(new BigDecimal("70.00")), RECRUITER_ID))
                 .isInstanceOf(ChallengeNotFoundException.class);
+    }
+
+    @Test
+    void scoreSubmission_sendsNotificationToStudent() {
+        Challenge c = activeChallenge();
+        when(challengeRepository.findById(CHALLENGE_ID)).thenReturn(Optional.of(c));
+        Submission s = new Submission();
+        s.setId(SUBMISSION_ID);
+        s.setChallenge(c);
+        s.setStudentId(STUDENT_ID);
+        when(submissionRepository.findById(SUBMISSION_ID)).thenReturn(Optional.of(s));
+        when(submissionRepository.save(any(Submission.class)))
+                .thenAnswer(inv -> inv.getArgument(0));
+
+        challengeService.scoreSubmission(
+                CHALLENGE_ID, SUBMISSION_ID,
+                new ScoreSubmissionRequest(new BigDecimal("85.50")), RECRUITER_ID);
+
+        verify(notificationClient).notify(
+                eq(STUDENT_ID),
+                eq("CHALLENGE_SCORED"),
+                eq("Your submission was scored"),
+                contains("85.50"));
+    }
+
+    @Test
+    void scoreSubmission_notificationFailure_stillSucceeds() {
+        Challenge c = activeChallenge();
+        when(challengeRepository.findById(CHALLENGE_ID)).thenReturn(Optional.of(c));
+        Submission s = new Submission();
+        s.setId(SUBMISSION_ID);
+        s.setChallenge(c);
+        s.setStudentId(STUDENT_ID);
+        when(submissionRepository.findById(SUBMISSION_ID)).thenReturn(Optional.of(s));
+        when(submissionRepository.save(any(Submission.class)))
+                .thenAnswer(inv -> inv.getArgument(0));
+        doThrow(new RuntimeException("connection refused"))
+                .when(notificationClient).notify(any(), any(), any(), any());
+
+        SubmissionReviewResponse response = challengeService.scoreSubmission(
+                CHALLENGE_ID, SUBMISSION_ID,
+                new ScoreSubmissionRequest(new BigDecimal("85.50")), RECRUITER_ID);
+
+        assertThat(response.score()).isEqualByComparingTo("85.50");
+        verify(notificationClient).notify(any(), any(), any(), any());
     }
 
     // ── US6: leaderboard ───────────────────────────────────────────────

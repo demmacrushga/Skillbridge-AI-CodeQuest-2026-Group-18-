@@ -1,0 +1,12 @@
+package com.skillbridge.notification.entity;
+
+public enum NotificationType {
+    CHALLENGE_SCORED,
+    MENTORSHIP_REQUEST_RECEIVED,
+    MENTORSHIP_REQUEST_ACCEPTED,
+    MENTORSHIP_REQUEST_DECLINED,
+    MENTORSHIP_MESSAGE,
+    OPPORTUNITY_MATCH,
+    ROADMAP_MILESTONE,
+    SYSTEM
+}

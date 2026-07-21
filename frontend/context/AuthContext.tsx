@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useReducer } from 'react';
 import { router } from 'expo-router';
+import * as Notifications from 'expo-notifications';
 import {
   login as apiLogin,
   register as apiRegister,
@@ -11,6 +12,7 @@ import {
   type RegisterPayload,
   type UserResponse,
 } from '@/services/auth';
+import { registerPushToken, deregisterPushToken } from '@/services/notification';
 
 interface AuthState {
   user: UserResponse | null;
@@ -72,11 +74,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     rehydrate();
   }, []);
 
+  async function registerPushTokenForUser(token: string) {
+    try {
+      const permission = await Notifications.requestPermissionsAsync() as { granted: boolean };
+      if (!permission.granted) return;
+      const expoToken = await Notifications.getExpoPushTokenAsync();
+      await registerPushToken(token, { token: expoToken.data });
+    } catch (err) {
+      console.warn('[AuthContext] push token registration failed:', err);
+    }
+  }
+
+  async function removePushTokenForUser(token: string) {
+    try {
+      const expoToken = await Notifications.getExpoPushTokenAsync();
+      await deregisterPushToken(token, { token: expoToken.data });
+    } catch (err) {
+      console.warn('[AuthContext] push token deregistration failed:', err);
+    }
+  }
+
   async function login(payload: LoginPayload) {
     console.log('[AuthContext] login() called');
     const data = await apiLogin(payload);
     console.log('[AuthContext] login() success, user:', data.user.email);
     dispatch({ type: 'AUTHENTICATED', user: data.user, accessToken: data.accessToken });
+    await registerPushTokenForUser(data.accessToken);
     router.replace('/(app)');
   }
 
@@ -84,10 +107,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await apiRegister(payload);
     const data = await apiLogin({ email: payload.email, password: payload.password });
     dispatch({ type: 'AUTHENTICATED', user: data.user, accessToken: data.accessToken });
+    await registerPushTokenForUser(data.accessToken);
     router.replace('/(app)');
   }
 
   async function logout() {
+    if (state.accessToken) {
+      await removePushTokenForUser(state.accessToken);
+    }
     await clearTokens();
     dispatch({ type: 'UNAUTHENTICATED' });
     router.replace('/(auth)/welcome');

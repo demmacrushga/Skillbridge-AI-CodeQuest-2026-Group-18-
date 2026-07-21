@@ -24,6 +24,13 @@ spring:
 jwt:
   secret: ${JWT_SECRET}
 
+notification:
+  url: ${NOTIFICATION_URL:}
+
+internal:
+  service:
+    token: ${INTERNAL_SERVICE_TOKEN:}
+
 springdoc:
   swagger-ui:
     path: /swagger-ui/index.html

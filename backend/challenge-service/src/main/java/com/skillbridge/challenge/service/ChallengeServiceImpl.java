@@ -12,6 +12,7 @@ import com.skillbridge.challenge.dto.response.SubmissionResponse;
 import com.skillbridge.challenge.dto.response.SubmissionReviewResponse;
 import com.skillbridge.challenge.entity.Challenge;
 import com.skillbridge.challenge.entity.Submission;
+import com.skillbridge.challenge.client.NotificationClient;
 import com.skillbridge.challenge.exception.ChallengeNotFoundException;
 import com.skillbridge.challenge.exception.DuplicateSubmissionException;
 import com.skillbridge.challenge.repository.ChallengeRepository;
@@ -36,6 +37,7 @@ public class ChallengeServiceImpl implements ChallengeService {
     private final ChallengeRepository challengeRepository;
     private final SubmissionRepository submissionRepository;
     private final LeaderboardService leaderboardService;
+    private final NotificationClient notificationClient;
 
     // ── US1: Post a challenge (RECRUITER) ──────────────────────────────
     @Override
@@ -150,7 +152,7 @@ public class ChallengeServiceImpl implements ChallengeService {
     @Transactional
     public SubmissionReviewResponse scoreSubmission(UUID challengeId, UUID submissionId,
                                                     ScoreSubmissionRequest request, UUID userId) {
-        findOwnedChallenge(challengeId, userId);
+        Challenge challenge = findOwnedChallenge(challengeId, userId);
 
         // Ownership is the only guard — scoring stays open after deadline/deactivation
         // (research Decision 1, spec FR-007).
@@ -161,7 +163,23 @@ public class ChallengeServiceImpl implements ChallengeService {
         submission.setScore(request.score());
         Submission saved = submissionRepository.save(submission);
         log.info("Submission scored id={} challenge={} score={}", submissionId, challengeId, request.score());
+
+        notifyChallengeScored(challenge, saved);
+
         return toReviewResponse(saved);
+    }
+
+    private void notifyChallengeScored(Challenge challenge, Submission submission) {
+        try {
+            notificationClient.notify(
+                    submission.getStudentId(),
+                    "CHALLENGE_SCORED",
+                    "Your submission was scored",
+                    String.format("%s — you scored %s. Check the leaderboard to see your rank.",
+                            challenge.getTitle(), submission.getScore()));
+        } catch (Exception e) {
+            log.warn("Failed to send challenge scored notification: {}", e.getMessage());
+        }
     }
 
     // ── US6: Leaderboard (any authenticated) ───────────────────────────

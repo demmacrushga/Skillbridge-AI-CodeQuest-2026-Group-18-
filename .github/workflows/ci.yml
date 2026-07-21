@@ -1,0 +1,56 @@
+name: CI
+
+on:
+  push:
+    branches: [main, feat/**]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-and-test:
+    name: Build & Test ${{ matrix.service }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - service: auth-service
+            path: backend/auth-service
+          - service: career-service
+            path: backend/career-service
+          - service: skill-gap-service
+            path: backend/skill-gap-service
+          - service: portfolio-service
+            path: backend/portfolio-service
+          - service: mock-interview-service
+            path: backend/mock-interview-service
+          - service: matching-service
+            path: backend/matching-service
+          - service: challenge-service
+            path: backend/challenge-service
+          - service: mentorship-service
+            path: backend/mentorship-service
+          - service: notification-service
+            path: backend/notification-service
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Build and test ${{ matrix.service }}
+        working-directory: ${{ matrix.path }}
+        run: ./mvnw --batch-mode verify
+
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports-${{ matrix.service }}
+          path: ${{ matrix.path }}/target/surefire-reports/
+          if-no-files-found: ignore

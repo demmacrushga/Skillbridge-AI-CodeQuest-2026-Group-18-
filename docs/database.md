@@ -42,8 +42,8 @@ SkillBridge AI uses **PostgreSQL 16**. Each microservice owns an isolated schema
 | interview-service | `interview` | sessions, questions, answers, feedback_reports |
 | matching-service | `matching` | opportunities, opportunity_skills, student_matches, applications |
 | challenge-service | `challenge` | challenges, submissions, leaderboard_entries |
-| mentorship-service | `mentorship` | alumni_profiles, mentorship_pairs, requests, messages |
-| notification-service | `notification` | notifications, push_tokens, preferences |
+| mentorship-service | `mentorship` | alumni_profiles, mentorship_requests, mentorship_pairs, messages |
+| notification-service | `notification` | notifications, push_tokens, notification_preferences |
 
 ---
 
@@ -207,11 +207,12 @@ SkillBridge AI uses **PostgreSQL 16**. Each microservice owns an isolated schema
 | id | UUID | PK | — |
 | portfolio_item_id | UUID | FK → portfolio_items.id | — |
 | requested_by | UUID | NOT NULL | Student user_id |
-| reviewed_by | UUID | NULLABLE | Admin user_id |
+| reviewed_by | UUID | NULLABLE | Admin user_id (NULL for AI decisions) |
 | status | VARCHAR(20) | NOT NULL | PENDING, APPROVED, REJECTED |
-| reviewer_note | TEXT | NULLABLE | — |
+| reviewer_note | TEXT | NULLABLE | AI reason or admin note |
+| review_source | VARCHAR(20) | NOT NULL, DEFAULT 'AI' | AI, HUMAN, PENDING_FALLBACK |
 | requested_at | TIMESTAMPTZ | NOT NULL | — |
-| reviewed_at | TIMESTAMPTZ | NULLABLE | — |
+| reviewed_at | TIMESTAMPTZ | NULLABLE | NULL when status is PENDING_FALLBACK |
 
 ### `portfolio.portfolio_links`
 
@@ -286,6 +287,7 @@ SkillBridge AI uses **PostgreSQL 16**. Each microservice owns an isolated schema
 | location | VARCHAR(255) | NULLABLE | — |
 | opportunity_type | VARCHAR(20) | NOT NULL | INTERNSHIP, ENTRY_LEVEL |
 | deadline | DATE | NULLABLE | — |
+| external_url | VARCHAR(2048) | NULLABLE | Marks the listing as externally hosted |
 | active | BOOLEAN | NOT NULL, DEFAULT TRUE | — |
 | created_at | TIMESTAMPTZ | NOT NULL | — |
 
@@ -294,11 +296,16 @@ SkillBridge AI uses **PostgreSQL 16**. Each microservice owns an isolated schema
 | Column | Type | Constraints | Description |
 |---|---|---|---|
 | id | UUID | PK | — |
-| opportunity_id | UUID | FK → opportunities.id | — |
+| opportunity_id | UUID | FK → opportunities.id, ON DELETE CASCADE | — |
 | skill_name | VARCHAR(150) | NOT NULL | — |
-| required | BOOLEAN | NOT NULL, DEFAULT TRUE | — |
+| required | BOOLEAN | NOT NULL, DEFAULT TRUE | true = must-have (weight 2), false = nice-to-have (weight 1) |
 
 ### `matching.student_matches`
+
+> **v1 note**: not created. Match scores are computed at request time from
+> `matching.opportunity_skills` against `matching.student_skills` — see
+> `specs/009-matching-service/research.md` Decision 2. This table remains the
+> designated materialization if a cache is ever needed.
 
 | Column | Type | Constraints | Description |
 |---|---|---|---|
@@ -316,6 +323,18 @@ SkillBridge AI uses **PostgreSQL 16**. Each microservice owns an isolated schema
 | student_id | UUID | NOT NULL | — |
 | opportunity_id | UUID | FK → opportunities.id | — |
 | applied_at | TIMESTAMPTZ | NOT NULL | — |
+
+Unique constraint on `(student_id, opportunity_id)` — one application per student per opportunity.
+
+### `matching.student_skills`
+
+| Column | Type | Constraints | Description |
+|---|---|---|---|
+| id | UUID | PK | — |
+| student_id | UUID | NOT NULL | — |
+| skill_name | VARCHAR(150) | NOT NULL | — |
+
+Unique index on `(student_id, lower(skill_name))` — case-insensitive dedup. This is the student's matching-service-owned skill profile, written as a full replace via `PUT /matching/profile/skills`; it is not sourced from any other service.
 
 ---
 
@@ -347,6 +366,11 @@ SkillBridge AI uses **PostgreSQL 16**. Each microservice owns an isolated schema
 
 ### `challenge.leaderboard_entries`
 
+> **v1 note**: not created. The leaderboard is computed at request time from
+> `challenge.submissions.score` (score DESC, submitted_at ASC) — see
+> `specs/010-challenge-service/research.md` Decision 2. This table remains the
+> designated materialization if a cache is ever needed.
+
 | Column | Type | Constraints | Description |
 |---|---|---|---|
 | id | UUID | PK | — |
@@ -365,14 +389,30 @@ SkillBridge AI uses **PostgreSQL 16**. Each microservice owns an isolated schema
 | Column | Type | Constraints | Description |
 |---|---|---|---|
 | id | UUID | PK | — |
-| user_id | UUID | NOT NULL | Reference to auth.users |
-| current_role | VARCHAR(150) | NULLABLE | — |
+| user_id | UUID | NOT NULL, UNIQUE | The alumnus (JWT `sub`); one profile per alumnus (upsert) |
+| current_role | VARCHAR(150) | NULLABLE | Quoted `"current_role"` in DDL — `CURRENT_ROLE` is a PostgreSQL reserved keyword |
 | company | VARCHAR(150) | NULLABLE | — |
 | industry | VARCHAR(100) | NULLABLE | — |
-| career_interests | TEXT | NULLABLE | JSON array of interest tags |
+| career_interests | JSONB | NOT NULL | Array of 1–20 free-text interest tags |
 | bio | TEXT | NULLABLE | — |
-| available | BOOLEAN | NOT NULL, DEFAULT TRUE | — |
-| updated_at | TIMESTAMPTZ | NOT NULL | — |
+| available | BOOLEAN | NOT NULL, DEFAULT TRUE | Search returns only available profiles |
+| updated_at | TIMESTAMPTZ | NOT NULL, DEFAULT now() | Refreshed on every upsert |
+
+Index `idx_alumni_profiles_available` on `(available)`.
+
+### `mentorship.mentorship_requests`
+
+| Column | Type | Constraints | Description |
+|---|---|---|---|
+| id | UUID | PK | — |
+| student_id | UUID | NOT NULL | Sender |
+| alumni_id | UUID | NOT NULL | Target alumnus |
+| message | VARCHAR(1000) | NULLABLE | Optional intro note |
+| status | VARCHAR(20) | NOT NULL | PENDING, ACCEPTED, DECLINED, CANCELLED |
+| created_at | TIMESTAMPTZ | NOT NULL, DEFAULT now() | — |
+| responded_at | TIMESTAMPTZ | NULLABLE | Set on accept/decline/cancel |
+
+Partial unique index `uq_request_pending` on `(student_id, alumni_id) WHERE status = 'PENDING'` — at most one pending request per student × alumnus; resolved rows leave the index automatically, so re-requests after decline/cancel are allowed. Indexes `idx_requests_alumni` on `(alumni_id, status)` and `idx_requests_student` on `(student_id)`.
 
 ### `mentorship.mentorship_pairs`
 
@@ -381,20 +421,25 @@ SkillBridge AI uses **PostgreSQL 16**. Each microservice owns an isolated schema
 | id | UUID | PK | — |
 | student_id | UUID | NOT NULL | — |
 | alumni_id | UUID | NOT NULL | — |
+| request_id | UUID | NOT NULL, FK → mentorship_requests.id | The accepted request (provenance) |
 | status | VARCHAR(20) | NOT NULL | ACTIVE, ENDED |
-| started_at | TIMESTAMPTZ | NOT NULL | — |
-| ended_at | TIMESTAMPTZ | NULLABLE | — |
+| started_at | TIMESTAMPTZ | NOT NULL, DEFAULT now() | — |
+| ended_at | TIMESTAMPTZ | NULLABLE | Set on end (idempotent) |
+
+Indexes `idx_pairs_student` on `(student_id)` and `idx_pairs_alumni` on `(alumni_id)`.
 
 ### `mentorship.messages`
 
 | Column | Type | Constraints | Description |
 |---|---|---|---|
 | id | UUID | PK | — |
-| pair_id | UUID | FK → mentorship_pairs.id | — |
+| pair_id | UUID | NOT NULL, FK → mentorship_pairs.id | — |
 | sender_id | UUID | NOT NULL | — |
-| body | TEXT | NOT NULL | — |
-| sent_at | TIMESTAMPTZ | NOT NULL | — |
-| read_at | TIMESTAMPTZ | NULLABLE | — |
+| body | VARCHAR(4000) | NOT NULL | — |
+| sent_at | TIMESTAMPTZ | NOT NULL, DEFAULT now() | — |
+| read_at | TIMESTAMPTZ | NULLABLE | Stamped when the recipient fetches the thread |
+
+Index `idx_messages_pair` on `(pair_id, sent_at)`.
 
 ---
 
@@ -405,22 +450,36 @@ SkillBridge AI uses **PostgreSQL 16**. Each microservice owns an isolated schema
 | Column | Type | Constraints | Description |
 |---|---|---|---|
 | id | UUID | PK | — |
-| user_id | UUID | NOT NULL | — |
-| type | VARCHAR(50) | NOT NULL | ROADMAP_MILESTONE, MATCH_FOUND, etc. |
+| user_id | UUID | NOT NULL | Recipient (JWT `sub`); not verified cross-service |
+| type | VARCHAR(50) | NOT NULL | `CHALLENGE_SCORED`, `MENTORSHIP_REQUEST_RECEIVED`, `MENTORSHIP_REQUEST_ACCEPTED`, `MENTORSHIP_REQUEST_DECLINED`, `MENTORSHIP_MESSAGE`, `OPPORTUNITY_MATCH`, `ROADMAP_MILESTONE`, `SYSTEM` |
 | title | VARCHAR(255) | NOT NULL | — |
-| body | TEXT | NOT NULL | — |
+| body | VARCHAR(2000) | NOT NULL | — |
 | read | BOOLEAN | NOT NULL, DEFAULT FALSE | — |
 | created_at | TIMESTAMPTZ | NOT NULL | — |
+
+Indexes `idx_notifications_user_created` on `(user_id, created_at DESC)` and partial index `idx_notifications_user_unread` on `(user_id) WHERE NOT read`.
 
 ### `notification.push_tokens`
 
 | Column | Type | Constraints | Description |
 |---|---|---|---|
 | id | UUID | PK | — |
-| user_id | UUID | NOT NULL | — |
-| expo_push_token | VARCHAR(255) | NOT NULL | — |
-| active | BOOLEAN | NOT NULL, DEFAULT TRUE | — |
-| registered_at | TIMESTAMPTZ | NOT NULL | — |
+| user_id | UUID | NOT NULL | Current owner; reassigned on cross-account registration |
+| token | VARCHAR(255) | NOT NULL, UNIQUE | The Expo push token string — device's identity |
+| active | BOOLEAN | NOT NULL, DEFAULT TRUE | Deactivated when Expo reports `DeviceNotRegistered` |
+| registered_at | TIMESTAMPTZ | NOT NULL | Refreshed on re-registration |
+
+Index `idx_push_tokens_user_active` on `(user_id, active)`.
+
+### `notification.notification_preferences`
+
+| Column | Type | Constraints | Description |
+|---|---|---|---|
+| id | UUID | PK | — |
+| user_id | UUID | NOT NULL, UNIQUE | — |
+| push_enabled | BOOLEAN | NOT NULL, DEFAULT TRUE | Global push switch |
+| muted_types | JSONB | NOT NULL, DEFAULT '[]' | Set of muted `NotificationType` values |
+| updated_at | TIMESTAMPTZ | NOT NULL | Refreshed on every PUT (full replace) |
 
 ---
 

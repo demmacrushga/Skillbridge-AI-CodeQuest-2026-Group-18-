@@ -15,3 +15,5 @@ public interface CareerService {
     CompletionResponse completeMilestone(UUID milestoneId, UUID requestingUserId, CompleteMilestoneRequest request);
     List<CareerPathResponse> getCareerPaths();
 }
+
+//also a simple change

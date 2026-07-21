@@ -9,6 +9,7 @@ import com.skillbridge.matching.dto.response.ApplicationWithOpportunityResponse;
 import com.skillbridge.matching.dto.response.MatchListResponse;
 import com.skillbridge.matching.dto.response.OpportunityResponse;
 import com.skillbridge.matching.dto.response.SkillsResponse;
+import com.skillbridge.matching.client.NotificationClient;
 import com.skillbridge.matching.entity.Application;
 import com.skillbridge.matching.entity.Opportunity;
 import com.skillbridge.matching.entity.StudentSkill;
@@ -29,8 +30,10 @@ import org.springframework.dao.DataIntegrityViolationException;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -45,6 +48,7 @@ class MatchingServiceImplTest {
     @Mock ApplicationRepository applicationRepository;
     @Mock StudentSkillRepository studentSkillRepository;
     @Mock MatchScoringService matchScoringService;
+    @Mock NotificationClient notificationClient;
 
     @InjectMocks MatchingServiceImpl matchingService;
 
@@ -92,6 +96,77 @@ class MatchingServiceImplTest {
         OpportunityResponse response = matchingService.postOpportunity(external, RECRUITER_ID);
 
         assertThat(response.externalUrl()).isEqualTo("https://hubtel.com/careers/x");
+    }
+
+    @Test
+    void postOpportunity_notifiesQualifyingStudents() {
+        UUID highScorer = UUID.randomUUID();
+        UUID lowScorer = UUID.randomUUID();
+        when(opportunityRepository.save(any(Opportunity.class)))
+                .thenAnswer(inv -> inv.getArgument(0));
+        when(studentSkillRepository.findDistinctStudentIds()).thenReturn(List.of(highScorer, lowScorer));
+        when(studentSkillRepository.findByStudentId(highScorer)).thenReturn(List.of(new StudentSkill(highScorer, "Java")));
+        when(studentSkillRepository.findByStudentId(lowScorer)).thenReturn(List.of(new StudentSkill(lowScorer, "Python")));
+        when(matchScoringService.score(any(), any()))
+                .thenAnswer(inv -> {
+                    Set<String> skills = inv.getArgument(1);
+                    return skills.contains("java") ? new BigDecimal("75.00") : new BigDecimal("25.00");
+                });
+
+        matchingService.postOpportunity(validRequest, RECRUITER_ID);
+
+        verify(notificationClient).notify(
+                eq(highScorer),
+                eq("OPPORTUNITY_MATCH"),
+                eq("New opportunity matches your skills"),
+                contains("75.00% match"));
+        verify(notificationClient, never()).notify(
+                eq(lowScorer),
+                any(),
+                any(),
+                any());
+    }
+
+    @Test
+    void postOpportunity_noStudents_doesNotNotify() {
+        when(opportunityRepository.save(any(Opportunity.class)))
+                .thenAnswer(inv -> inv.getArgument(0));
+        when(studentSkillRepository.findDistinctStudentIds()).thenReturn(List.of());
+
+        matchingService.postOpportunity(validRequest, RECRUITER_ID);
+
+        verify(notificationClient, never()).notify(any(), any(), any(), any());
+    }
+
+    @Test
+    void postOpportunity_notificationFailureStillSucceeds() {
+        when(opportunityRepository.save(any(Opportunity.class)))
+                .thenAnswer(inv -> inv.getArgument(0));
+        when(studentSkillRepository.findDistinctStudentIds()).thenReturn(List.of(USER_ID));
+        when(studentSkillRepository.findByStudentId(USER_ID)).thenReturn(List.of(new StudentSkill(USER_ID, "Java")));
+        when(matchScoringService.score(any(), any())).thenReturn(new BigDecimal("90.00"));
+        doThrow(new RuntimeException("down")).when(notificationClient).notify(any(), any(), any(), any());
+
+        OpportunityResponse response = matchingService.postOpportunity(validRequest, RECRUITER_ID);
+
+        assertThat(response.active()).isTrue();
+    }
+
+    @Test
+    void postOpportunity_capsNotificationsAt100HighestScoring() {
+        List<UUID> studentIds = new ArrayList<>();
+        for (int i = 0; i < 105; i++) {
+            studentIds.add(UUID.randomUUID());
+        }
+        when(opportunityRepository.save(any(Opportunity.class)))
+                .thenAnswer(inv -> inv.getArgument(0));
+        when(studentSkillRepository.findDistinctStudentIds()).thenReturn(studentIds);
+        when(studentSkillRepository.findByStudentId(any())).thenReturn(List.of(new StudentSkill(UUID.randomUUID(), "Java")));
+        when(matchScoringService.score(any(), any())).thenReturn(new BigDecimal("60.00"));
+
+        matchingService.postOpportunity(validRequest, RECRUITER_ID);
+
+        verify(notificationClient, times(100)).notify(any(), any(), any(), any());
     }
 
     // ── US2: getMatches ────────────────────────────────────────────────

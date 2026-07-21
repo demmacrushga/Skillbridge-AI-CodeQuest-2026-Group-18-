@@ -194,11 +194,12 @@ Processes uploaded CVs and identifies skill gaps using AI.
 Manages a student's professional portfolio and the verification of submitted items.
 
 **Key responsibilities:**
-- Portfolio item CRUD (projects, certifications, achievements)
-- File attachment handling
-- Admin verification workflow (pending → approved/rejected)
-- Shareable portfolio link generation
-- Verified badge assignment
+- Portfolio item CRUD (projects, certifications, achievements) with `externalUrl` only (no file storage)
+- AI-powered verification via Claude: `POST /items/{id}/verify` calls Claude synchronously and returns APPROVED/REJECTED immediately
+- Admin manual override: `PATCH /verification/{id}` for corrections; stamps `reviewSource = HUMAN`
+- Graceful fallback: Claude unavailable → item saved as PENDING with `reviewSource = PENDING_FALLBACK`
+- Shareable portfolio link generation (SecureRandom 256-bit token, idempotent)
+- Verified badge assignment on APPROVED
 
 **Data owned:** `portfolio_items`, `verification_requests`, `portfolio_links`
 
@@ -303,13 +304,14 @@ See [`docs/database.md`](database.md) for the full schema reference and ER diagr
 
 ## AI Integration
 
-Three services call the **Anthropic Claude API** (`claude-sonnet-4-6`):
+Four services call the **Anthropic Claude API** (`claude-sonnet-4-6`):
 
-| Service | What It Uses Claude For |
-|---|---|
-| career-service | Generates the semester-by-semester roadmap from career path + academic level |
-| skill-gap-service | Analyses extracted CV text against role requirements to produce ranked gap report |
-| interview-service | Evaluates student interview answers and generates structured feedback |
+| Service | Prompt Constant | What It Uses Claude For |
+|---|---|---|
+| career-service | `CAREER_ROADMAP_V1` | Generates the semester-by-semester roadmap from career path + academic level |
+| skill-gap-service | `SKILL_GAP_ANALYSIS_V1` | Analyses extracted CV text against role requirements; produces ranked gap report |
+| portfolio-service | `PORTFOLIO_VERIFICATION_V1` | Synchronously assesses a portfolio item and returns APPROVED/REJECTED with a reason |
+| interview-service | *(planned)* | Evaluates student interview answers and generates structured feedback |
 
 ### Prompt Strategy
 
@@ -384,11 +386,17 @@ All configuration is externalised via environment variables. No secrets are hard
 
 | Decision | Rationale |
 |---|---|
-| **Monorepo** | Required by project guidelines; also simplifies cross-service refactoring and gives accurate contribution tracking across all five members |
-| **Spring Boot for backend** | Required by project guidelines; strong ecosystem for building REST APIs with security and database integration |
+| **Monorepo** | Simplifies cross-service refactoring, keeps CI in one place, and gives accurate contribution tracking for a solo builder |
+| **Spring Boot for backend** | Strong ecosystem for REST APIs, Spring Security, JPA, and Flyway; familiar stack for the team |
 | **PostgreSQL over NoSQL** | Career development data is highly relational (users → roadmaps → milestones → scores); ACID compliance critical for score consistency |
-| **Expo over bare React Native** | Simplifies builds, OTA updates, and device API access without ejecting — appropriate for a semester prototype |
+| **Schema-per-service isolation** | Minimum viable database independence for shared-host PostgreSQL; enforces service boundaries without full DB separation |
+| **JWT validated locally per service** | Auth-service is not a hard runtime dependency on every request; stateless validation scales without a session store |
+| **Expo over bare React Native** | Simplifies builds, OTA updates, and device API access; appropriate for a prototype |
 | **Zustand over Redux** | Lighter API, easier TypeScript integration, sufficient for the app's state complexity |
-| **Flyway for migrations** | Versioned, auditable schema changes that run automatically on service startup — prevents schema drift across team members |
+| **Flyway for migrations** | Versioned, sequential schema changes that apply automatically on startup — prevents drift across environments |
 | **JWT with refresh rotation** | Stateless auth scales without a session store; rotation limits the damage window of a stolen refresh token |
-| **Anthropic Claude API** | Consistent, high-quality structured output; reliable JSON mode makes it suitable for parsing roadmaps and gap reports programmatically |
+| **Anthropic Claude API** | Consistent, high-quality structured JSON output suitable for parsing roadmaps, gap reports, and verification decisions programmatically |
+| **In-memory CV text extraction** | PDFBox / Apache POI extract text from uploads in memory; raw file bytes are discarded after extraction. No disk or S3 needed in skill-gap-service |
+| **Synchronous Claude calls** | Services call Claude in-request (not async queues). 2–120 s latency is acceptable for user-initiated actions (roadmap generation, CV analysis, portfolio verification). Async deferred to v2 |
+| **Graceful AI fallback** | Every Claude-calling service defines an explicit fallback: career-service returns a structured error, skill-gap-service marks upload as FAILED (503), portfolio-service saves as PENDING (200). Constitution Principle III |
+| **Named prompt constants** | All Claude prompts are `private static final String PROMPT_NAME = "..."`. Logged alongside response latency. Enables prompt version tracing in production logs |

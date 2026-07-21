@@ -9,8 +9,9 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { getUnreadCount } from '@/services/notification';
 import { useAuth } from '@/context/AuthContext';
 import { colors, typography, spacing, radius } from '@/constants/theme';
 import { getRoadmap } from '@/services/career';
@@ -54,30 +55,6 @@ function QuickLink({ icon, label, color, onPress }: QuickLinkProps) {
   );
 }
 
-interface ComingSoonCardProps {
-  icon: keyof typeof Ionicons.glyphMap;
-  title: string;
-  subtitle: string;
-  color: string;
-}
-
-function ComingSoonCard({ icon, title, subtitle, color }: ComingSoonCardProps) {
-  return (
-    <View style={styles.comingSoonCard}>
-      <View style={[styles.comingSoonIcon, { backgroundColor: `${color}12` }]}>
-        <Ionicons name={icon} size={18} color={`${color}99`} />
-      </View>
-      <View style={{ flex: 1, gap: 2 }}>
-        <Text style={styles.comingSoonTitle}>{title}</Text>
-        <Text style={styles.comingSoonSubtitle} numberOfLines={1}>{subtitle}</Text>
-      </View>
-      <View style={styles.soonPill}>
-        <Text style={styles.soonPillText}>Soon</Text>
-      </View>
-    </View>
-  );
-}
-
 export default function DashboardScreen() {
   const { state } = useAuth();
   const user = state.user;
@@ -91,6 +68,23 @@ export default function DashboardScreen() {
 
   const [roadmap, setRoadmap] = useState<Roadmap | null>(null);
   const [loadingRoadmap, setLoadingRoadmap] = useState(true);
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  const fetchUnreadCount = useCallback(async () => {
+    if (!state.accessToken) return;
+    try {
+      const data = await getUnreadCount(state.accessToken);
+      setUnreadCount(data.unread);
+    } catch {
+      setUnreadCount(0);
+    }
+  }, [state.accessToken]);
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchUnreadCount();
+    }, [fetchUnreadCount])
+  );
 
   const fetchRoadmap = useCallback(async () => {
     if (!state.accessToken || !state.user) { setLoadingRoadmap(false); return; }
@@ -127,8 +121,17 @@ export default function DashboardScreen() {
           </View>
           <Text style={styles.brandName}>SkillBridge</Text>
         </View>
-        <TouchableOpacity style={styles.headerBtn} accessibilityLabel="Notifications">
+        <TouchableOpacity
+          style={styles.headerBtn}
+          accessibilityLabel="Notifications"
+          onPress={() => router.push('./notifications')}
+        >
           <Ionicons name="notifications-outline" size={22} color={colors.primary} />
+          {unreadCount > 0 && (
+            <View style={styles.badge}>
+              <Text style={styles.badgeText}>{unreadCount > 99 ? '99+' : unreadCount}</Text>
+            </View>
+          )}
         </TouchableOpacity>
       </View>
 
@@ -275,16 +278,41 @@ export default function DashboardScreen() {
             color={colors.tertiary}
             onPress={() => router.push('./mock-interview')}
           />
-        </View>
-
-        {/* Coming soon */}
-        <Text style={styles.sectionLabel}>Coming Soon</Text>
-        <View style={styles.comingSoonList}>
-          <ComingSoonCard
+          <QuickLink
             icon="briefcase-outline"
-            title="Internship Matches"
-            subtitle="Opportunities tailored to your profile"
-            color={colors.onSurfaceVariant}
+            label="Opportunities"
+            color={colors.primary}
+            onPress={() =>
+              router.push(
+                user?.role === 'RECRUITER'
+                  ? './opportunities-manage'
+                  : './opportunities'
+              )
+            }
+          />
+          <QuickLink
+            icon="trophy-outline"
+            label="Challenges"
+            color={colors.secondary}
+            onPress={() =>
+              router.push(
+                user?.role === 'RECRUITER'
+                  ? './challenges-manage'
+                  : './challenges'
+              )
+            }
+          />
+          <QuickLink
+            icon="people-outline"
+            label="Mentorship"
+            color={colors.tertiary}
+            onPress={() =>
+              router.push(
+                user?.role === 'ALUMNI'
+                  ? './mentorship-manage'
+                  : './mentorship'
+              )
+            }
           />
         </View>
 
@@ -324,6 +352,23 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surfaceContainerLow,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  badge: {
+    position: 'absolute',
+    top: -2,
+    right: -2,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: colors.error,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 4,
+  },
+  badgeText: {
+    ...typography.labelSm,
+    color: colors.onPrimary,
+    fontSize: 10,
   },
 
   scrollContent: { padding: spacing.lg, paddingBottom: spacing.xxl + 24 },
@@ -586,52 +631,4 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontSize: 11,
   },
-
-  /* Coming soon list */
-  comingSoonList: {
-    backgroundColor: colors.surfaceCard,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.outlineVariant,
-    overflow: 'hidden',
-  },
-  comingSoonCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.lg,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.outlineVariant,
-  },
-  comingSoonIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: radius.md,
-    justifyContent: 'center',
-    alignItems: 'center',
-    flexShrink: 0,
-  },
-  comingSoonTitle: {
-    fontFamily: 'Inter_500Medium',
-    fontSize: 14,
-    color: colors.onSurfaceVariant,
-    marginBottom: 2,
-  },
-  comingSoonSubtitle: {
-    ...typography.labelSm,
-    color: colors.outline,
-    fontFamily: 'Inter_400Regular',
-    fontSize: 11,
-  },
-  soonPill: {
-    backgroundColor: colors.surfaceContainerLow,
-    borderRadius: radius.full,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderWidth: 1,
-    borderColor: colors.outlineVariant,
-    flexShrink: 0,
-  },
-  soonPillText: { ...typography.labelSm, color: colors.outline, fontSize: 10 },
 });

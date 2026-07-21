@@ -38,8 +38,8 @@ You will also need:
 ## Clone the Repository
 
 ```bash
-git clone https://github.com/demmacrushga/Skillbridge-AI-CodeQuest-2026-Group-18-.git
-cd Skillbridge-AI-CodeQuest-2026-Group-18-
+git clone https://github.com/knust-cs-group18/skillbridge-ai.git
+cd skillbridge-ai
 ```
 
 ---

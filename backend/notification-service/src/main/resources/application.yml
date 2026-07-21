@@ -1,0 +1,35 @@
+server:
+  port: ${SERVER_PORT:8009}
+
+spring:
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/skillbridge_db}
+    username: ${SPRING_DATASOURCE_USERNAME:skillbridge}
+    password: ${SPRING_DATASOURCE_PASSWORD:password}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        default_schema: notification
+  flyway:
+    enabled: true
+    schemas: notification
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+  jackson:
+    mapper:
+      accept-case-insensitive-enums: false
+
+jwt:
+  secret: ${JWT_SECRET}
+
+notification:
+  internal-token: ${INTERNAL_SERVICE_TOKEN}
+
+expo:
+  push-url: ${EXPO_PUSH_URL:https://exp.host/--/api/v2/push/send}
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui/index.html

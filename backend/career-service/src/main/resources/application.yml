@@ -25,6 +25,13 @@ spring:
 jwt:
   secret: ${JWT_SECRET}
 
+notification:
+  url: ${NOTIFICATION_URL:}
+
+internal:
+  service:
+    token: ${INTERNAL_SERVICE_TOKEN:}
+
 anthropic:
   api-key: ${ANTHROPIC_API_KEY}
   model: claude-sonnet-4-6

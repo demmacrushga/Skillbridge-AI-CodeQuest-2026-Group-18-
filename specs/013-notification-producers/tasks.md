@@ -1,0 +1,26 @@
+# Implementation Tasks: Notification Producers
+
+- [x] 1. Create `specs/013-notification-producers/plan.md`
+- [x] 2. Create `specs/013-notification-producers/research.md`
+- [x] 3. Create `specs/013-notification-producers/quickstart.md`
+- [x] 4. challenge-service: add `NotificationClient` (best-effort `RestClient` with 2s timeout and `@Value` config)
+- [x] 5. challenge-service: add `application.yml` notification config
+- [x] 6. challenge-service: wire `CHALLENGE_SCORED` notification in `ChallengeServiceImpl.scoreSubmission`
+- [x] 7. challenge-service: add unit tests for notification happy and failure-isolation paths
+- [x] 8. mentorship-service: add `NotificationClient`
+- [x] 9. mentorship-service: add `application.yml` notification config
+- [x] 10. mentorship-service: wire request/accept/decline/message notifications in `MentorshipServiceImpl`
+- [x] 11. mentorship-service: add unit tests for notification happy and failure-isolation paths
+- [x] 12. matching-service: add `NotificationClient`
+- [x] 13. matching-service: add `application.yml` notification config
+- [x] 14. matching-service: wire `OPPORTUNITY_MATCH` fan-out in `MatchingServiceImpl.postOpportunity`
+- [x] 15. matching-service: add unit tests for notification happy and failure-isolation paths
+- [x] 16. career-service: add `NotificationClient`
+- [x] 17. career-service: add `application.yml` notification config
+- [x] 18. career-service: wire `ROADMAP_MILESTONE` notification in `CareerServiceImpl.completeMilestone`
+- [x] 19. career-service: add unit tests for notification happy and failure-isolation paths
+- [x] 20. Update `docker-compose.yml` env vars for producer services
+- [x] 21. Update `.env.example` with `INTERNAL_SERVICE_TOKEN` (already present)
+- [x] 22. Confirm `.github/workflows/ci.yml` includes producer services and env defaults keep tests passing
+- [x] 23. Run backend verification for all touched services
+- [x] 24. Update agent context to point to `specs/013-notification-producers/plan.md`

@@ -175,6 +175,14 @@ public class ClaudeService {
                            .replaceFirst("\\r?\\n?```$", "")
                            .strip();
             }
+            if (!json.startsWith("[")) {
+                int arrayStart = json.indexOf('[');
+                if (arrayStart < 0) {
+                    log.error("prompt={} Claude response contains no JSON array: {}", PROMPT_NAME, json);
+                    throw new AiServiceException("AI service returned invalid response");
+                }
+                json = json.substring(arrayStart);
+            }
             List<SkillGapTemplate> result = objectMapper.readValue(
                     json, new TypeReference<List<SkillGapTemplate>>() {});
 

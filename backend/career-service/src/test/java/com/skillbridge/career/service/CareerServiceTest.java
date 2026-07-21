@@ -1,5 +1,6 @@
 package com.skillbridge.career.service;
 
+import com.skillbridge.career.client.NotificationClient;
 import com.skillbridge.career.dto.request.CompleteMilestoneRequest;
 import com.skillbridge.career.dto.request.GenerateRoadmapRequest;
 import com.skillbridge.career.dto.response.CompletionResponse;
@@ -39,6 +40,7 @@ class CareerServiceTest {
     @Mock MilestoneRepository milestoneRepository;
     @Mock MilestoneCompletionRepository completionRepository;
     @Mock ClaudeService claudeService;
+    @Mock NotificationClient notificationClient;
 
     @InjectMocks CareerServiceImpl careerService;
 
@@ -192,6 +194,38 @@ class CareerServiceTest {
         assertThatThrownBy(() -> careerService.completeMilestone(
                 milestone.getId(), OTHER_USER_ID, null))
                 .isInstanceOf(AccessDeniedException.class);
+    }
+
+    @Test
+    void completeMilestone_notifiesStudent() {
+        when(milestoneRepository.findById(any())).thenReturn(Optional.of(milestone));
+        when(completionRepository.save(any())).thenReturn(new MilestoneCompletion());
+        when(milestoneRepository.findByRoadmapId(any())).thenReturn(List.of(milestone));
+        when(completionRepository.countByUserIdAndMilestoneIdIn(eq(USER_ID), any())).thenReturn(1L);
+        when(roadmapRepository.save(any())).thenReturn(roadmap);
+
+        careerService.completeMilestone(milestone.getId(), USER_ID, new CompleteMilestoneRequest("Done"));
+
+        verify(notificationClient).notify(
+                eq(USER_ID),
+                eq("ROADMAP_MILESTONE"),
+                eq("Milestone complete 🎉"),
+                contains("Learn Java"));
+    }
+
+    @Test
+    void completeMilestone_notificationFailureStillSucceeds() {
+        when(milestoneRepository.findById(any())).thenReturn(Optional.of(milestone));
+        when(completionRepository.save(any())).thenReturn(new MilestoneCompletion());
+        when(milestoneRepository.findByRoadmapId(any())).thenReturn(List.of(milestone));
+        when(completionRepository.countByUserIdAndMilestoneIdIn(eq(USER_ID), any())).thenReturn(1L);
+        when(roadmapRepository.save(any())).thenReturn(roadmap);
+        doThrow(new RuntimeException("down")).when(notificationClient).notify(any(), any(), any(), any());
+
+        CompletionResponse response = careerService.completeMilestone(
+                milestone.getId(), USER_ID, new CompleteMilestoneRequest("Done"));
+
+        assertThat(response.progressPercent()).isEqualTo(100);
     }
 
     // --- getCareerPaths ---

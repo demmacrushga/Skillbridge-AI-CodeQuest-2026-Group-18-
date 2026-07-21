@@ -23,6 +23,7 @@ export const typography = {
   headlineSm: { fontFamily: 'PlusJakartaSans_600SemiBold', fontSize: 20, lineHeight: 28 },
   bodyLg: { fontFamily: 'Inter_400Regular', fontSize: 18, lineHeight: 29 },
   bodyMd: { fontFamily: 'Inter_400Regular', fontSize: 16, lineHeight: 24 },
+  bodySm: { fontFamily: 'Inter_400Regular', fontSize: 13, lineHeight: 19 },
   labelMd: { fontFamily: 'Inter_500Medium', fontSize: 14, lineHeight: 17, letterSpacing: 0.14 },
   labelSm: { fontFamily: 'Inter_600SemiBold', fontSize: 12, lineHeight: 14 },
 } as const;
