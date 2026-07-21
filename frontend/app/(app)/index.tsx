@@ -604,11 +604,13 @@ const styles = StyleSheet.create({
   quickLinkGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
+    justifyContent: 'space-between',
     gap: spacing.sm,
     marginBottom: spacing.lg,
   },
   quickLink: {
-    flex: 1,
+    width: '23%',
+    minWidth: '23%',
     alignItems: 'center',
     gap: spacing.sm,
     backgroundColor: colors.surfaceCard,
@@ -617,6 +619,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.xs,
     borderWidth: 1,
     borderColor: colors.outlineVariant,
+    marginBottom: spacing.sm,
+    minHeight: 88,
   },
   quickLinkIcon: {
     width: 44,
