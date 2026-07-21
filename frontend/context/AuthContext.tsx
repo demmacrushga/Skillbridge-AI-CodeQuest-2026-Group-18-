@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useReducer } from 'react';
 import { router } from 'expo-router';
-import * as Notifications from 'expo-notifications';
+import { requestPermissionsAsync, getExpoPushTokenAsync } from '@/lib/notifications';
 import {
   login as apiLogin,
   register as apiRegister,
@@ -76,9 +76,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   async function registerPushTokenForUser(token: string) {
     try {
-      const permission = await Notifications.requestPermissionsAsync() as { granted: boolean };
+      const permission = await requestPermissionsAsync();
       if (!permission.granted) return;
-      const expoToken = await Notifications.getExpoPushTokenAsync();
+      const expoToken = await getExpoPushTokenAsync();
       await registerPushToken(token, { token: expoToken.data });
     } catch (err) {
       console.warn('[AuthContext] push token registration failed:', err);
@@ -87,7 +87,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   async function removePushTokenForUser(token: string) {
     try {
-      const expoToken = await Notifications.getExpoPushTokenAsync();
+      const expoToken = await getExpoPushTokenAsync();
       await deregisterPushToken(token, { token: expoToken.data });
     } catch (err) {
       console.warn('[AuthContext] push token deregistration failed:', err);
