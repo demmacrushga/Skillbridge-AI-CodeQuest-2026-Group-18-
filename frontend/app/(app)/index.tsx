@@ -7,6 +7,7 @@ import {
   ScrollView,
   Animated,
   ActivityIndicator,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useFocusEffect } from 'expo-router';
@@ -115,18 +116,17 @@ export default function DashboardScreen() {
     <SafeAreaView style={styles.container} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
-        <View style={styles.headerBrand}>
-          <View style={styles.logoMark}>
-            <Ionicons name="compass" size={18} color={colors.onPrimary} />
-          </View>
-          <Text style={styles.brandName}>SkillBridge</Text>
-        </View>
+        <Image
+          source={require('@/assets/images/logo.png')}
+          style={styles.headerLogo}
+          resizeMode="contain"
+        />
         <TouchableOpacity
           style={styles.headerBtn}
           accessibilityLabel="Notifications"
           onPress={() => router.push('./notifications')}
         >
-          <Ionicons name="notifications-outline" size={22} color={colors.primary} />
+          <Ionicons name="notifications-outline" size={22} color={colors.onPrimary} />
           {unreadCount > 0 && (
             <View style={styles.badge}>
               <Text style={styles.badgeText}>{unreadCount > 99 ? '99+' : unreadCount}</Text>
@@ -348,20 +348,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.sm + 2,
-    backgroundColor: colors.surfaceCard,
+    backgroundColor: '#000000',
     borderBottomWidth: 1,
-    borderBottomColor: colors.outlineVariant,
+    borderBottomColor: '#1F2937',
   },
-  headerBrand: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  logoMark: {
-    width: 34,
-    height: 34,
-    borderRadius: radius.md,
-    backgroundColor: colors.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
+  headerLogo: {
+    width: 160,
+    height: 48,
   },
-  brandName: { ...typography.headlineSm, color: colors.primary },
   headerBtn: {
     width: 40,
     height: 40,
