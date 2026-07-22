@@ -31,6 +31,9 @@ public class Roadmap {
     @Column(nullable = false, length = 20)
     private String academicLevel;
 
+    @Column(nullable = false, length = 20)
+    private String role;
+
     @Column(columnDefinition = "TEXT")
     private String currentSkills;
 

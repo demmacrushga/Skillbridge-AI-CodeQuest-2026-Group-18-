@@ -18,6 +18,7 @@ import { useAuth } from '@/context/AuthContext';
 import { colors, typography, spacing, radius } from '@/constants/theme';
 import { getCareerPaths, generateRoadmap, getRoadmap, completeMilestone } from '@/services/career';
 import { type CareerPath, type Milestone, type Roadmap } from '@/types/career';
+import { type UserRole } from '@/services/auth';
 
 // ─── Roadmap type config ──────────────────────────────────────────────────────
 
@@ -48,20 +49,43 @@ function getPathMeta(name: string): PathMeta {
   return PATH_META[name] ?? { icon: 'briefcase-outline', color: colors.secondary, demand: 'In Demand' };
 }
 
-const LEVELS = [
-  { value: 'Level 100', year: 'Year 1', label: '100' },
-  { value: 'Level 200', year: 'Year 2', label: '200' },
-  { value: 'Level 300', year: 'Year 3', label: '300' },
-  { value: 'Level 400', year: 'Year 4', label: '400' },
-];
+interface LevelOption {
+  value: string;
+  label: string;
+  sublabel: string;
+}
 
-const GENERATING_STEPS = [
-  'Analysing your career path…',
-  'Mapping KNUST semester structure…',
-  'Generating milestones with Claude AI…',
-  'Personalising to your skills…',
-  'Finalising your roadmap…',
-];
+const LEVELS_BY_ROLE: Record<Extract<UserRole, 'STUDENT' | 'ALUMNI'>, LevelOption[]> = {
+  STUDENT: [
+    { value: 'Level 100', label: '100', sublabel: 'Year 1' },
+    { value: 'Level 200', label: '200', sublabel: 'Year 2' },
+    { value: 'Level 300', label: '300', sublabel: 'Year 3' },
+    { value: 'Level 400', label: '400', sublabel: 'Year 4' },
+  ],
+  ALUMNI: [
+    { value: 'Recent Graduate', label: '1', sublabel: 'Recent Graduate · 0–12 months' },
+    { value: 'Early Career', label: '2', sublabel: 'Early Career · 1–3 years' },
+    { value: 'Mid Career', label: '3', sublabel: 'Mid Career · 3–7 years' },
+    { value: 'Career Changer', label: '4', sublabel: 'Career Changer · Transitioning' },
+  ],
+};
+
+const GENERATING_STEPS_BY_ROLE: Record<Extract<UserRole, 'STUDENT' | 'ALUMNI'>, string[]> = {
+  STUDENT: [
+    'Analysing your career path…',
+    'Mapping KNUST semester structure…',
+    'Generating milestones with Claude AI…',
+    'Personalising to your skills…',
+    'Finalising your roadmap…',
+  ],
+  ALUMNI: [
+    'Analysing your career path…',
+    'Mapping your career stage…',
+    'Generating milestones with Claude AI…',
+    'Personalising to your experience…',
+    'Finalising your roadmap…',
+  ],
+};
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -86,17 +110,26 @@ function groupBySemester(milestones: Milestone[]) {
   }, {});
 }
 
+function periodLabel(role: Extract<UserRole, 'STUDENT' | 'ALUMNI'>, n: number) {
+  return role === 'ALUMNI' ? `Phase ${n}` : `Semester ${n}`;
+}
+
+function periodShort(role: Extract<UserRole, 'STUDENT' | 'ALUMNI'>, n: number) {
+  return role === 'ALUMNI' ? `P${n}` : `S${n}`;
+}
+
 // ─── Generating overlay ───────────────────────────────────────────────────────
 
-function GeneratingOverlay({ careerPath }: { careerPath: string }) {
+function GeneratingOverlay({ careerPath, role }: { careerPath: string; role: Extract<UserRole, 'STUDENT' | 'ALUMNI'> }) {
   const [stepIdx, setStepIdx] = useState(0);
+  const steps = GENERATING_STEPS_BY_ROLE[role];
   const fadeAnim = useRef(new Animated.Value(1)).current;
   const dotAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     const interval = setInterval(() => {
       Animated.timing(fadeAnim, { toValue: 0, duration: 300, useNativeDriver: true }).start(() => {
-        setStepIdx(i => Math.min(i + 1, GENERATING_STEPS.length - 1));
+        setStepIdx(i => Math.min(i + 1, steps.length - 1));
         Animated.timing(fadeAnim, { toValue: 1, duration: 300, useNativeDriver: true }).start();
       });
     }, 18000);
@@ -127,10 +160,12 @@ function GeneratingOverlay({ careerPath }: { careerPath: string }) {
       <Text style={styles.generatingTitle}>Building your roadmap</Text>
       <Text style={styles.generatingPath}>{careerPath}</Text>
       <Animated.Text style={[styles.generatingStep, { opacity: fadeAnim }]}>
-        {GENERATING_STEPS[stepIdx]}
+        {steps[stepIdx]}
       </Animated.Text>
       <Text style={styles.generatingNote}>
-        Claude AI is crafting a full semester-by-semester plan.{'\n'}This takes around 30–60 seconds.
+        {role === 'ALUMNI'
+          ? "Claude AI is crafting a career-stage plan for working professionals.\nThis takes around 30–60 seconds."
+          : "Claude AI is crafting a full semester-by-semester plan.\nThis takes around 30–60 seconds."}
       </Text>
       <View style={styles.generatingDots}>
         {[0, 1, 2].map(i => (
@@ -352,6 +387,9 @@ function UpcomingCard({
 
 export default function CareerScreen() {
   const { state } = useAuth();
+  const user = state.user;
+  const role: Extract<UserRole, 'STUDENT' | 'ALUMNI'> = user?.role === 'ALUMNI' ? 'ALUMNI' : 'STUDENT';
+  const levels = LEVELS_BY_ROLE[role];
   const pulseOpacity = usePulse();
   const tabScrollRef = useRef<ScrollView>(null);
 
@@ -365,7 +403,7 @@ export default function CareerScreen() {
   const [paths, setPaths] = useState<CareerPath[]>([]);
   const [loadingPaths, setLoadingPaths] = useState(true);
   const [selectedPath, setSelectedPath] = useState<CareerPath | null>(null);
-  const [level, setLevel] = useState('Level 200');
+  const [level, setLevel] = useState(levels[1].value);
   const [skills, setSkills] = useState<string[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
   const [generateError, setGenerateError] = useState<string | null>(null);
@@ -435,6 +473,7 @@ export default function CareerScreen() {
         careerPath: selectedPath.name,
         academicLevel: level,
         currentSkills: skills,
+        role,
       });
       await fetchRoadmap();
     } catch (e: unknown) {
@@ -508,9 +547,24 @@ export default function CareerScreen() {
     );
   }
 
+  // ── Recruiters / Admins don't need a personal roadmap ─────────────────────
+  if (user?.role === 'RECRUITER' || user?.role === 'ADMIN') {
+    return (
+      <SafeAreaView style={styles.centered}>
+        <View style={styles.errorIconWrap}>
+          <Ionicons name="briefcase-outline" size={44} color={colors.outline} />
+        </View>
+        <Text style={styles.errorStateTitle}>Career roadmap</Text>
+        <Text style={styles.errorStateSub}>
+          This space is for personal career planning. Use the Opportunities tab to post and manage roles.
+        </Text>
+      </SafeAreaView>
+    );
+  }
+
   // ── Generating overlay ────────────────────────────────────────────────────
   if (isGenerating) {
-    return <GeneratingOverlay careerPath={selectedPath?.name ?? 'your career path'} />;
+    return <GeneratingOverlay careerPath={selectedPath?.name ?? 'your career path'} role={role} />;
   }
 
   // ── Picker view (no roadmap yet, or user chose to change path) ────────────
@@ -544,7 +598,9 @@ export default function CareerScreen() {
           <View style={styles.hero}>
             <Text style={styles.heroTitle}>Build your{'\n'}career roadmap</Text>
             <Text style={styles.heroSubtitle}>
-              AI-powered, semester-by-semester — tailored to you at KNUST.
+              {role === 'ALUMNI'
+                ? 'AI-powered career milestones — tailored to your professional stage.'
+                : 'AI-powered, semester-by-semester — tailored to you at KNUST.'}
             </Text>
           </View>
 
@@ -603,17 +659,17 @@ export default function CareerScreen() {
 
           <View style={styles.stepHeader}>
             <View style={styles.stepNum}><Text style={styles.stepNumText}>2</Text></View>
-            <Text style={styles.stepTitle}>Your academic level</Text>
+            <Text style={styles.stepTitle}>{role === 'ALUMNI' ? 'Your career stage' : 'Your academic level'}</Text>
           </View>
 
           <View style={styles.levelTrack}>
-            {LEVELS.map((l, idx) => {
+            {levels.map((l, idx) => {
               const isSelected = level === l.value;
-              const isPast = LEVELS.findIndex(x => x.value === level) > idx;
+              const isPast = role === 'STUDENT' && levels.findIndex(x => x.value === level) > idx;
               return (
                 <View key={l.value} style={styles.levelStep}>
-                  {idx < LEVELS.length - 1 && (
-                    <View style={[styles.levelConnector, (isSelected || isPast) && styles.levelConnectorActive]} />
+                  {idx < levels.length - 1 && (
+                    <View style={[styles.levelConnector, (isSelected || isPast) && role === 'STUDENT' && styles.levelConnectorActive]} />
                   )}
                   <TouchableOpacity
                     style={[styles.levelNode, isSelected && styles.levelNodeSelected, isPast && styles.levelNodePast]}
@@ -624,7 +680,7 @@ export default function CareerScreen() {
                       : <Text style={[styles.levelNodeText, isSelected && styles.levelNodeTextSelected]}>{l.label}</Text>
                     }
                   </TouchableOpacity>
-                  <Text style={[styles.levelYear, isSelected && styles.levelYearSelected]}>{l.year}</Text>
+                  <Text style={[styles.levelYear, isSelected && styles.levelYearSelected]}>{l.sublabel}</Text>
                 </View>
               );
             })}
@@ -633,11 +689,9 @@ export default function CareerScreen() {
           <View style={[styles.levelContextCard, { borderColor: colors.outlineVariant }]}>
             <Ionicons name="information-circle-outline" size={15} color={colors.onSurfaceVariant} />
             <Text style={styles.levelContextText}>
-              We'll generate milestones from{' '}
-              <Text style={{ color: colors.primary, fontFamily: 'Inter_500Medium' }}>
-                {LEVELS.find(l2 => l2.value === level)?.year ?? level}
-              </Text>
-              {' '}onwards — skipping semesters you've already completed.
+              {role === 'ALUMNI'
+                ? <>We'll tailor milestones for an <Text style={{ color: colors.primary, fontFamily: 'Inter_500Medium' }}>{levels.find(l2 => l2.value === level)?.sublabel ?? level}</Text> professional.</>
+                : <>We'll generate milestones from <Text style={{ color: colors.primary, fontFamily: 'Inter_500Medium' }}>{levels.find(l2 => l2.value === level)?.sublabel ?? level}</Text> onwards — skipping semesters you've already completed.</>}
             </Text>
           </View>
 
@@ -742,7 +796,7 @@ export default function CareerScreen() {
                   : hasNext && !isSelected ? <View style={styles.tabActiveDot} /> : null
                 }
                 <Text style={[styles.tabText, isSelected && styles.tabTextSelected, allDone && !isSelected && styles.tabTextDone]}>
-                  S{sem}
+                  {periodShort(role, sem)}
                 </Text>
                 <Text style={[styles.tabCount, isSelected && styles.tabCountSelected]}>
                   {semDoneCount}/{semMs.length}
@@ -765,7 +819,7 @@ export default function CareerScreen() {
         }
       >
         <View style={styles.semHeading}>
-          <Text style={styles.semTitle}>Semester {selectedSemester}</Text>
+          <Text style={styles.semTitle}>{periodLabel(role, selectedSemester)}</Text>
           <View style={[styles.semPill, semAllDone && styles.semPillDone]}>
             {semAllDone ? <Ionicons name="checkmark-circle" size={13} color={colors.secondary} /> : null}
             <Text style={[styles.semPillText, semAllDone && styles.semPillTextDone]}>

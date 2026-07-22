@@ -28,7 +28,7 @@ public class ClaudeService {
     private static final String ANTHROPIC_API_URL = "https://api.anthropic.com/v1/messages";
     private static final String ANTHROPIC_VERSION = "2023-06-01";
 
-    private static final String SYSTEM_PROMPT = """
+    private static final String STUDENT_SYSTEM_PROMPT = """
             You are a career development advisor for KNUST university students in Ghana.
             Given a student's career path, academic level, and current skills, return ONLY
             a valid JSON array of milestone objects with exactly these fields:
@@ -37,6 +37,22 @@ public class ClaudeService {
             Generate exactly 3 milestones per semester. Only include semesters the student
             has not yet completed: Level 100 starts at semester 1, Level 200 at semester 3,
             Level 300 at semester 5, Level 400 at semester 7.
+            No preamble. No markdown. Valid JSON only.
+            """;
+
+    private static final String ALUMNI_SYSTEM_PROMPT = """
+            You are a career development advisor for KNUST alumni in Ghana.
+            Given an alumnus's career path, career stage, and current skills, return ONLY
+            a valid JSON array of milestone objects with exactly these fields:
+            semester (int 1-4), title (string), description (string),
+            milestoneType (one of: SKILL, PROJECT, CERT, EXPERIENCE), displayOrder (int).
+            Treat semester as a 3-month career phase. Generate exactly 3 milestones per phase.
+            Phase 1 covers months 0-3, Phase 2 months 3-6, Phase 3 months 6-9, Phase 4 months 9-12.
+            For "Career Changer" or "Recent Graduate" start at phase 1.
+            For "Early Career" start at phase 1 but make milestones more advanced.
+            For "Mid Career" start at phase 2.
+            Milestones should be practical for working professionals: skills to sharpen, projects to ship,
+            certifications to earn, and experience to gain (e.g., leadership, freelancing, interviews, networking).
             No preamble. No markdown. Valid JSON only.
             """;
 
@@ -59,16 +75,18 @@ public class ClaudeService {
         this.maxTokens = maxTokens;
     }
 
-    @Cacheable(value = "roadmap-templates", key = "#careerPath + ':' + #academicLevel")
-    public List<MilestoneTemplate> generateRoadmap(String careerPath, String academicLevel, List<String> currentSkills) {
+    @Cacheable(value = "roadmap-templates", key = "#careerPath + ':' + #academicLevel + ':' + #role")
+    public List<MilestoneTemplate> generateRoadmap(String careerPath, String academicLevel, List<String> currentSkills, String role) {
+        String systemPrompt = "ALUMNI".equals(role) ? ALUMNI_SYSTEM_PROMPT : STUDENT_SYSTEM_PROMPT;
+        String levelLabel = "ALUMNI".equals(role) ? "Career stage" : "Academic level";
         String userMessage = String.format(
-                "Career path: %s%nAcademic level: %s%nCurrent skills: %s",
-                careerPath, academicLevel, String.join(", ", currentSkills));
+                "Career path: %s%n%s: %s%nCurrent skills: %s",
+                careerPath, levelLabel, academicLevel, String.join(", ", currentSkills));
 
         Map<String, Object> requestBody = Map.of(
                 "model", model,
                 "max_tokens", maxTokens,
-                "system", SYSTEM_PROMPT,
+                "system", systemPrompt,
                 "messages", List.of(Map.of("role", "user", "content", userMessage))
         );
 

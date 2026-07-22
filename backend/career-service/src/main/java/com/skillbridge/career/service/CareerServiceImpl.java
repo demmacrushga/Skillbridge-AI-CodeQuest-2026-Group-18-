@@ -49,13 +49,18 @@ public class CareerServiceImpl implements CareerService {
         roadmapRepository.findByUserIdAndCareerPath(userId, careerPath)
                 .ifPresent(roadmapRepository::delete);
 
+        if (!("STUDENT".equals(request.role()) || "ALUMNI".equals(request.role()))) {
+            throw new IllegalArgumentException("Roadmaps can only be generated for STUDENT or ALUMNI roles");
+        }
+
         List<MilestoneTemplate> templates = claudeService.generateRoadmap(
-                request.careerPath(), request.academicLevel(), request.currentSkills());
+                request.careerPath(), request.academicLevel(), request.currentSkills(), request.role());
 
         Roadmap roadmap = new Roadmap();
         roadmap.setUserId(userId);
         roadmap.setCareerPath(careerPath);
         roadmap.setAcademicLevel(request.academicLevel());
+        roadmap.setRole(request.role());
         roadmap.setCurrentSkills(String.join(", ", request.currentSkills()));
         roadmap.setProgressPercent(0);
         roadmapRepository.save(roadmap);

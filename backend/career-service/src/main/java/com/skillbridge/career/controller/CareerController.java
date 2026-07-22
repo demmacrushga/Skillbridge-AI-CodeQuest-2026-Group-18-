@@ -28,6 +28,9 @@ public class CareerController {
     public ResponseEntity<RoadmapResponse> generateRoadmap(
             @Valid @RequestBody GenerateRoadmapRequest request,
             @AuthenticationPrincipal JwtUserDetails principal) {
+        if (!principal.role().equals(request.role())) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
         RoadmapResponse response = careerService.generateRoadmap(request, principal.userId());
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }

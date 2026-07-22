@@ -77,12 +77,12 @@ class CareerServiceTest {
     void generateRoadmap_success_persistsMilestonesAndReturns() {
         when(careerPathRepository.findByName("Software Engineer")).thenReturn(Optional.of(careerPath));
         when(roadmapRepository.findByUserIdAndCareerPath(USER_ID, careerPath)).thenReturn(Optional.empty());
-        when(claudeService.generateRoadmap(any(), any(), any())).thenReturn(List.of(
+        when(claudeService.generateRoadmap(any(), any(), any(), any())).thenReturn(List.of(
                 new MilestoneTemplate(1, "Learn Java", "Core Java", MilestoneType.SKILL, 1)));
         when(roadmapRepository.save(any())).thenReturn(roadmap);
         when(milestoneRepository.saveAll(any())).thenReturn(List.of(milestone));
 
-        GenerateRoadmapRequest req = new GenerateRoadmapRequest("Software Engineer", "Level 200", List.of("Python"));
+        GenerateRoadmapRequest req = new GenerateRoadmapRequest("Software Engineer", "Level 200", List.of("Python"), "STUDENT");
         RoadmapResponse response = careerService.generateRoadmap(req, USER_ID);
 
         assertThat(response.careerPath()).isEqualTo("Software Engineer");
@@ -93,16 +93,34 @@ class CareerServiceTest {
     }
 
     @Test
+    void generateRoadmap_alumni_success_persistsRoleAndMilestones() {
+        when(careerPathRepository.findByName("Software Engineer")).thenReturn(Optional.of(careerPath));
+        when(roadmapRepository.findByUserIdAndCareerPath(USER_ID, careerPath)).thenReturn(Optional.empty());
+        when(claudeService.generateRoadmap(any(), any(), any(), eq("ALUMNI"))).thenReturn(List.of(
+                new MilestoneTemplate(1, "Build a portfolio project", "Showcase on GitHub", MilestoneType.PROJECT, 1)));
+        when(roadmapRepository.save(any())).thenReturn(roadmap);
+        when(milestoneRepository.saveAll(any())).thenReturn(List.of(milestone));
+
+        GenerateRoadmapRequest req = new GenerateRoadmapRequest(
+                "Software Engineer", "Early Career", List.of("Python"), "ALUMNI");
+        RoadmapResponse response = careerService.generateRoadmap(req, USER_ID);
+
+        assertThat(response.careerPath()).isEqualTo("Software Engineer");
+        verify(roadmapRepository).save(argThat(r -> "ALUMNI".equals(r.getRole()) && "Early Career".equals(r.getAcademicLevel())));
+        verify(milestoneRepository).saveAll(any());
+    }
+
+    @Test
     void generateRoadmap_replacesExistingRoadmap() {
         when(careerPathRepository.findByName("Software Engineer")).thenReturn(Optional.of(careerPath));
         when(roadmapRepository.findByUserIdAndCareerPath(USER_ID, careerPath)).thenReturn(Optional.of(roadmap));
-        when(claudeService.generateRoadmap(any(), any(), any())).thenReturn(List.of(
+        when(claudeService.generateRoadmap(any(), any(), any(), any())).thenReturn(List.of(
                 new MilestoneTemplate(1, "Learn Java", "Core Java", MilestoneType.SKILL, 1)));
         when(roadmapRepository.save(any())).thenReturn(roadmap);
         when(milestoneRepository.saveAll(any())).thenReturn(List.of(milestone));
 
         careerService.generateRoadmap(
-                new GenerateRoadmapRequest("Software Engineer", "Level 200", List.of()), USER_ID);
+                new GenerateRoadmapRequest("Software Engineer", "Level 200", List.of(), "STUDENT"), USER_ID);
 
         verify(roadmapRepository).delete(roadmap);
     }
@@ -112,7 +130,7 @@ class CareerServiceTest {
         when(careerPathRepository.findByName("Unknown")).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> careerService.generateRoadmap(
-                new GenerateRoadmapRequest("Unknown", "Level 100", List.of()), USER_ID))
+                new GenerateRoadmapRequest("Unknown", "Level 100", List.of(), "STUDENT"), USER_ID))
                 .isInstanceOf(CareerPathNotFoundException.class);
     }
 
@@ -120,11 +138,11 @@ class CareerServiceTest {
     void generateRoadmap_claudeFails_throwsAiServiceException() {
         when(careerPathRepository.findByName("Software Engineer")).thenReturn(Optional.of(careerPath));
         when(roadmapRepository.findByUserIdAndCareerPath(any(), any())).thenReturn(Optional.empty());
-        when(claudeService.generateRoadmap(any(), any(), any()))
+        when(claudeService.generateRoadmap(any(), any(), any(), any()))
                 .thenThrow(new AiServiceException("AI service unavailable"));
 
         assertThatThrownBy(() -> careerService.generateRoadmap(
-                new GenerateRoadmapRequest("Software Engineer", "Level 100", List.of()), USER_ID))
+                new GenerateRoadmapRequest("Software Engineer", "Level 100", List.of(), "STUDENT"), USER_ID))
                 .isInstanceOf(AiServiceException.class);
     }
 

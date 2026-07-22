@@ -41,7 +41,10 @@ export async function generateRoadmap(
 ): Promise<Roadmap> {
   return request<Roadmap>('/career/roadmap/generate', accessToken, {
     method: 'POST',
-    body: JSON.stringify(payload),
+    body: JSON.stringify({
+      ...payload,
+      role: payload.role ?? 'STUDENT',
+    }),
   });
 }
 

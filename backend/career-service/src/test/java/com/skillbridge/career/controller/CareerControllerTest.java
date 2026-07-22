@@ -82,7 +82,7 @@ class CareerControllerTest {
 
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(
-                                new GenerateRoadmapRequest("Software Engineer", "Level 200", List.of("Python")))))
+                                new GenerateRoadmapRequest("Software Engineer", "Level 200", List.of("Python"), "STUDENT"))))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.roadmapId").exists())
                 .andExpect(jsonPath("$.careerPath").value("Software Engineer"))
@@ -98,7 +98,7 @@ class CareerControllerTest {
 
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(
-                                new GenerateRoadmapRequest("Unknown", "Level 100", List.of()))))
+                                new GenerateRoadmapRequest("Unknown", "Level 100", List.of(), "STUDENT"))))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.status").value(404));
     }
@@ -112,7 +112,7 @@ class CareerControllerTest {
 
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(
-                                new GenerateRoadmapRequest("Software Engineer", "Level 100", List.of()))))
+                                new GenerateRoadmapRequest("Software Engineer", "Level 100", List.of(), "STUDENT"))))
                 .andExpect(status().isServiceUnavailable())
                 .andExpect(jsonPath("$.status").value(503));
     }
@@ -133,9 +133,37 @@ class CareerControllerTest {
 
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(
-                                new GenerateRoadmapRequest("Software Engineer", "Year 1", List.of()))))
+                                new GenerateRoadmapRequest("Software Engineer", "Year 1", List.of(), "STUDENT"))))
                 .andExpect(status().isUnprocessableEntity())
                 .andExpect(jsonPath("$.fieldErrors").isArray());
+    }
+
+    @Test
+    void generateRoadmap_roleMismatch_returns403() throws Exception {
+        mockMvc.perform(post("/career/roadmap/generate")
+
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(
+                                new GenerateRoadmapRequest("Software Engineer", "Early Career", List.of("Python"), "ALUMNI"))))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void generateRoadmap_alumniValidRequest_returns201() throws Exception {
+        JwtUserDetails alumniPrincipal = new JwtUserDetails(USER_ID, "test@knust.edu.gh", "ALUMNI");
+        UsernamePasswordAuthenticationToken auth =
+                new UsernamePasswordAuthenticationToken(alumniPrincipal, null, alumniPrincipal.getAuthorities());
+        SecurityContextHolder.getContext().setAuthentication(auth);
+
+        when(careerService.generateRoadmap(any(), any())).thenReturn(SAMPLE_ROADMAP);
+
+        mockMvc.perform(post("/career/roadmap/generate")
+
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(
+                                new GenerateRoadmapRequest("Software Engineer", "Early Career", List.of("Python"), "ALUMNI"))))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.careerPath").value("Software Engineer"));
     }
 
     // --- getRoadmap ---

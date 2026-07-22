@@ -43,7 +43,7 @@ class ClaudeServiceTest {
                 .thenReturn(VALID_RESPONSE);
 
         List<MilestoneTemplate> result = claudeService.generateRoadmap(
-                "Software Engineer", "Level 200", List.of("Python"));
+                "Software Engineer", "Level 200", List.of("Python"), "STUDENT");
 
         assertThat(result).hasSize(1);
         assertThat(result.get(0).title()).isEqualTo("Learn Java");
@@ -55,7 +55,7 @@ class ClaudeServiceTest {
                 .thenThrow(new RestClientException("Connection refused"));
 
         assertThatThrownBy(() -> claudeService.generateRoadmap(
-                "Software Engineer", "Level 200", List.of()))
+                "Software Engineer", "Level 200", List.of(), "STUDENT"))
                 .isInstanceOf(AiServiceException.class)
                 .hasMessageContaining("unavailable");
     }
@@ -67,7 +67,7 @@ class ClaudeServiceTest {
                 .thenReturn(badResponse);
 
         assertThatThrownBy(() -> claudeService.generateRoadmap(
-                "Software Engineer", "Level 200", List.of()))
+                "Software Engineer", "Level 200", List.of(), "STUDENT"))
                 .isInstanceOf(AiServiceException.class);
     }
 }

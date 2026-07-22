@@ -206,7 +206,9 @@ export default function DashboardScreen() {
             <View style={styles.upNextHeader}>
               <View style={styles.upNextLive}>
                 <Animated.View style={[styles.upNextDot, { opacity: pulseOpacity }]} />
-                <Text style={styles.upNextEyebrow}>UP NEXT · SEMESTER {nextMilestone.semester}</Text>
+                <Text style={styles.upNextEyebrow}>
+                  UP NEXT · {user?.role === 'ALUMNI' ? `PHASE ${nextMilestone.semester}` : `SEMESTER ${nextMilestone.semester}`}
+                </Text>
               </View>
               <Ionicons name="arrow-forward" size={16} color={colors.tertiary} />
             </View>
@@ -253,7 +255,7 @@ export default function DashboardScreen() {
               icon: 'compass-outline' as const,
               label: 'Career',
               color: colors.secondary,
-              roles: ['STUDENT', 'RECRUITER', 'ALUMNI', 'ADMIN'],
+              roles: ['STUDENT', 'ALUMNI'],
               onPress: () => router.push('./career'),
             },
             {

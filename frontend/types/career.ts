@@ -1,3 +1,5 @@
+import { type UserRole } from '@/services/auth';
+
 export type MilestoneType = 'SKILL' | 'PROJECT' | 'CERT' | 'EXPERIENCE';
 
 export interface CareerPath {
@@ -27,6 +29,7 @@ export interface GenerateRoadmapPayload {
   careerPath: string;
   academicLevel: string;
   currentSkills: string[];
+  role: UserRole;
 }
 
 export interface CompleteMilestonePayload {
