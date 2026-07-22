@@ -248,72 +248,89 @@ export default function DashboardScreen() {
         {/* Quick actions */}
         <Text style={styles.sectionLabel}>Quick Access</Text>
         <View style={styles.quickLinkGrid}>
-          <QuickLink
-            icon="compass-outline"
-            label="Career"
-            color={colors.secondary}
-            onPress={() => router.push('./career')}
-          />
-          <QuickLink
-            icon="person-outline"
-            label="Profile"
-            color={colors.tertiary}
-            onPress={() => router.push('./profile')}
-          />
-          <QuickLink
-            icon="analytics-outline"
-            label="Skills"
-            color={colors.secondary}
-            onPress={() => router.push('./skill-gap')}
-          />
-          <QuickLink
-            icon="folder-open-outline"
-            label="Portfolio"
-            color={colors.primary}
-            onPress={() => router.push('./portfolio')}
-          />
-          <QuickLink
-            icon="mic-outline"
-            label="Interview"
-            color={colors.tertiary}
-            onPress={() => router.push('./mock-interview')}
-          />
-          <QuickLink
-            icon="briefcase-outline"
-            label="Opportunities"
-            color={colors.primary}
-            onPress={() =>
-              router.push(
-                user?.role === 'RECRUITER'
-                  ? './opportunities-manage'
-                  : './opportunities'
-              )
-            }
-          />
-          <QuickLink
-            icon="trophy-outline"
-            label="Challenges"
-            color={colors.secondary}
-            onPress={() =>
-              router.push(
-                user?.role === 'RECRUITER'
-                  ? './challenges-manage'
-                  : './challenges'
-              )
-            }
-          />
-          <QuickLink
-            icon="people-outline"
-            label="Mentorship"
-            color={colors.tertiary}
-            onPress={() =>
-              router.push(
-                user?.role === 'ALUMNI'
-                  ? './mentorship-manage'
-                  : './mentorship'
-              )
-            }
-          />
+          {[
+            {
+              icon: 'compass-outline' as const,
+              label: 'Career',
+              color: colors.secondary,
+              roles: ['STUDENT', 'RECRUITER', 'ALUMNI', 'ADMIN'],
+              onPress: () => router.push('./career'),
+            },
+            {
+              icon: 'person-outline' as const,
+              label: 'Profile',
+              color: colors.tertiary,
+              roles: ['STUDENT', 'RECRUITER', 'ALUMNI', 'ADMIN'],
+              onPress: () => router.push('./profile'),
+            },
+            {
+              icon: 'analytics-outline' as const,
+              label: 'Skills',
+              color: colors.secondary,
+              roles: ['STUDENT', 'RECRUITER', 'ALUMNI', 'ADMIN'],
+              onPress: () => router.push('./skill-gap'),
+            },
+            {
+              icon: 'folder-open-outline' as const,
+              label: 'Portfolio',
+              color: colors.primary,
+              roles: ['STUDENT', 'RECRUITER', 'ALUMNI', 'ADMIN'],
+              onPress: () => router.push('./portfolio'),
+            },
+            {
+              icon: 'mic-outline' as const,
+              label: 'Interview',
+              color: colors.tertiary,
+              roles: ['STUDENT', 'RECRUITER', 'ALUMNI', 'ADMIN'],
+              onPress: () => router.push('./mock-interview'),
+            },
+            {
+              icon: 'briefcase-outline' as const,
+              label: 'Opportunities',
+              color: colors.primary,
+              roles: ['STUDENT', 'RECRUITER'],
+              onPress: () =>
+                router.push(
+                  user?.role === 'RECRUITER'
+                    ? './opportunities-manage'
+                    : './opportunities'
+                ),
+            },
+            {
+              icon: 'trophy-outline' as const,
+              label: 'Challenges',
+              color: colors.secondary,
+              roles: ['STUDENT', 'RECRUITER'],
+              onPress: () =>
+                router.push(
+                  user?.role === 'RECRUITER'
+                    ? './challenges-manage'
+                    : './challenges'
+                ),
+            },
+            {
+              icon: 'people-outline' as const,
+              label: 'Mentorship',
+              color: colors.tertiary,
+              roles: ['STUDENT', 'ALUMNI'],
+              onPress: () =>
+                router.push(
+                  user?.role === 'ALUMNI'
+                    ? './mentorship-manage'
+                    : './mentorship'
+                ),
+            },
+          ]
+            .filter(link => !user?.role || link.roles.includes(user.role))
+            .map(link => (
+              <QuickLink
+                key={link.label}
+                icon={link.icon}
+                label={link.label}
+                color={link.color}
+                onPress={link.onPress}
+              />
+            ))}
         </View>
 
       </ScrollView>
