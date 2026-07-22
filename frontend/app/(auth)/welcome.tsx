@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { colors, typography, spacing, radius } from '@/constants/theme';
@@ -7,6 +7,11 @@ export default function WelcomeScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.hero}>
+        <Image
+          source={require('@/assets/images/logo.png')}
+          style={styles.logo}
+          resizeMode="contain"
+        />
         <View style={styles.badge}>
           <Text style={styles.badgeText}>AI-POWERED</Text>
         </View>
@@ -42,12 +47,18 @@ export default function WelcomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.primary,
+    backgroundColor: '#000000',
     paddingHorizontal: spacing.lg,
   },
   hero: {
     flex: 1,
     justifyContent: 'center',
+    alignItems: 'center',
+  },
+  logo: {
+    width: 240,
+    height: 120,
+    marginBottom: spacing.lg,
   },
   badge: {
     alignSelf: 'flex-start',
@@ -66,11 +77,13 @@ const styles = StyleSheet.create({
     ...typography.displayLg,
     color: colors.onPrimary,
     marginBottom: spacing.md,
+    textAlign: 'center',
   },
   subtitle: {
     ...typography.bodyLg,
     color: 'rgba(255,255,255,0.65)',
     maxWidth: 300,
+    textAlign: 'center',
   },
   actions: {
     paddingBottom: spacing.xl,
