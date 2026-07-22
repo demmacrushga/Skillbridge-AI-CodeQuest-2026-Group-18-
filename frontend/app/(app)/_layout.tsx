@@ -148,49 +148,42 @@ export default function AppLayout() {
         name="opportunities"
         options={{
           href: null,
-          tabBarStyle: { display: 'none' },
         }}
       />
       <Tabs.Screen
         name="opportunities-manage"
         options={{
           href: null,
-          tabBarStyle: { display: 'none' },
         }}
       />
       <Tabs.Screen
         name="challenges"
         options={{
           href: null,
-          tabBarStyle: { display: 'none' },
         }}
       />
       <Tabs.Screen
         name="challenges-manage"
         options={{
           href: null,
-          tabBarStyle: { display: 'none' },
         }}
       />
       <Tabs.Screen
         name="mentorship"
         options={{
           href: null,
-          tabBarStyle: { display: 'none' },
         }}
       />
       <Tabs.Screen
         name="mentorship-manage"
         options={{
           href: null,
-          tabBarStyle: { display: 'none' },
         }}
       />
       <Tabs.Screen
         name="notifications"
         options={{
           href: null,
-          tabBarStyle: { display: 'none' },
         }}
       />
     </Tabs>
