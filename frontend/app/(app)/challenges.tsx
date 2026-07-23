@@ -16,7 +16,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { useAuth } from '@/context/AuthContext';
 import { colors, typography, spacing, radius } from '@/constants/theme';
 import { SkeletonChallengeCard } from '@/components/ui/SkeletonCard';
-import { AnimatedFadeIn, AnimatedPressable } from '@/components/ui/AnimatedView';
+import { AnimatedFadeIn, AnimatedPressable, ActiveText } from '@/components/ui/AnimatedView';
 import {
   getChallenges,
   submit,
@@ -106,25 +106,25 @@ function ChallengeCard({
   token: string;
 }) {
   return (
-    <AnimatedPressable style={styles.card}>
-      <TouchableOpacity onPress={onToggle} activeOpacity={0.8} style={styles.cardHead}>
+    <AnimatedPressable style={styles.card} onPress={onToggle}>
+      <View style={styles.cardHead}>
         <View style={styles.cardBody}>
-          <Text style={styles.cardTitle} numberOfLines={expanded ? undefined : 1}>
+          <ActiveText style={styles.cardTitle} numberOfLines={expanded ? undefined : 1}>
             {challenge.title}
-          </Text>
-          <Text style={styles.cardMeta} numberOfLines={1}>
+          </ActiveText>
+          <ActiveText style={styles.cardMeta} numberOfLines={1}>
             due {deadlineStr(challenge.deadline)}
-          </Text>
+          </ActiveText>
         </View>
         {challenge.submitted ? (
           <View style={styles.submittedBadge}>
             <Ionicons name="checkmark-circle" size={14} color={colors.secondary} />
-            <Text style={styles.submittedBadgeText}>Submitted</Text>
+            <ActiveText style={styles.submittedBadgeText}>Submitted</ActiveText>
           </View>
         ) : (
           <Ionicons name="chevron-down" size={16} color={colors.onSurfaceVariant} />
         )}
-      </TouchableOpacity>
+      </View>
 
       {expanded ? (
         <View style={styles.cardDetail}>
@@ -290,15 +290,21 @@ export default function ChallengesScreen() {
             <Text style={styles.errorText}>{error}</Text>
           </View>
         ) : challenges.length === 0 ? (
-          <View style={styles.emptyCard}>
-            <View style={styles.emptyIconWrap}>
-              <Ionicons name="trophy-outline" size={28} color={colors.secondary} />
+          <AnimatedFadeIn delay={100} duration={400}>
+            <View style={styles.emptyCard}>
+              <View style={styles.emptyIconWrap}>
+                <Ionicons name="trophy-outline" size={32} color={colors.secondary} />
+              </View>
+              <Text style={styles.emptyTitle}>No Open Challenges</Text>
+              <Text style={styles.emptySubtitle}>
+                No challenges available right now. Check back soon for new coding & skill challenges from top recruiters!
+              </Text>
+              <TouchableOpacity style={styles.emptyRefreshBtn} onPress={() => load(true)} activeOpacity={0.8}>
+                <Ionicons name="refresh" size={15} color={colors.onPrimary} />
+                <Text style={styles.emptyRefreshBtnText}>Refresh</Text>
+              </TouchableOpacity>
             </View>
-            <Text style={styles.emptyTitle}>No Open Challenges</Text>
-            <Text style={styles.emptySubtitle}>
-              No challenges available right now. Check back soon for new coding & skill challenges from top recruiters!
-            </Text>
-          </View>
+          </AnimatedFadeIn>
         ) : (
           <AnimatedFadeIn delay={100} duration={450}>
             <View style={styles.cardList}>
@@ -328,9 +334,12 @@ export default function ChallengesScreen() {
         </View>
 
         {mySubmissions.length === 0 ? (
-          <Text style={styles.noSubmissionsText}>
-            Challenges you submit to will appear here
-          </Text>
+          <View style={styles.noSubmissionsCard}>
+            <Ionicons name="layers-outline" size={20} color={colors.onSurfaceVariant} />
+            <Text style={styles.noSubmissionsText}>
+              Challenges you submit to will appear here
+            </Text>
+          </View>
         ) : (
           <View style={styles.cardList}>
             {mySubmissions.map(s => (
@@ -570,10 +579,21 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
     overflow: 'hidden',
   },
+  noSubmissionsCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    backgroundColor: colors.surfaceContainerLow,
+    borderRadius: radius.lg,
+    padding: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.outlineVariant,
+  },
   noSubmissionsText: {
     fontFamily: 'Inter_400Regular',
     fontSize: 13,
     color: colors.onSurfaceVariant,
+    flex: 1,
   },
   submissionRow: {
     flexDirection: 'row',
@@ -617,18 +637,23 @@ const styles = StyleSheet.create({
 
   emptyCard: {
     backgroundColor: colors.surfaceCard,
-    borderRadius: radius.lg,
+    borderRadius: radius.xl,
     padding: spacing.xl,
     alignItems: 'center',
     gap: spacing.sm,
     borderWidth: 1,
-    borderColor: colors.outlineVariant,
+    borderColor: `${colors.secondary}20`,
+    shadowColor: colors.secondary,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    elevation: 2,
   },
   emptyIconWrap: {
-    width: 52,
-    height: 52,
-    borderRadius: radius.full,
-    backgroundColor: colors.surfaceContainerLow,
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: `${colors.secondary}10`,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: spacing.xs,
@@ -644,5 +669,24 @@ const styles = StyleSheet.create({
     color: colors.onSurfaceVariant,
     textAlign: 'center',
     lineHeight: 20,
+  },
+  emptyRefreshBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    backgroundColor: colors.secondary,
+    borderRadius: radius.full,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: 10,
+    marginTop: spacing.sm,
+    shadowColor: colors.secondary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  emptyRefreshBtnText: {
+    ...typography.labelMd,
+    color: colors.onPrimary,
   },
 });

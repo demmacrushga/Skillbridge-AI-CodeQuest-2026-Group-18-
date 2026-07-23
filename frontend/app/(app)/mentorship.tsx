@@ -15,7 +15,7 @@ import { useFocusEffect } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useAuth } from '@/context/AuthContext';
 import { colors, typography, spacing, radius } from '@/constants/theme';
-import { AnimatedFadeIn, AnimatedPressable } from '@/components/ui/AnimatedView';
+import { AnimatedFadeIn, AnimatedPressable, ActiveText } from '@/components/ui/AnimatedView';
 import MessageThread from '@/components/mentorship/MessageThread';
 import {
   searchAlumni,
@@ -76,27 +76,27 @@ function AlumniCard({
   onNoteChange: (v: string) => void;
 }) {
   return (
-    <AnimatedPressable style={styles.card}>
-      <TouchableOpacity onPress={onToggle} activeOpacity={0.8} style={styles.cardHead}>
+    <AnimatedPressable style={styles.card} onPress={onToggle}>
+      <View style={styles.cardHead}>
         <View style={styles.cardBody}>
-          <Text style={styles.cardTitle} numberOfLines={expanded ? undefined : 1}>
+          <ActiveText style={styles.cardTitle} numberOfLines={expanded ? undefined : 1}>
             {entry.currentRole ?? anonLabel(entry.alumniId)}
-          </Text>
-          <Text style={styles.cardMeta} numberOfLines={1}>
+          </ActiveText>
+          <ActiveText style={styles.cardMeta} numberOfLines={1}>
             {[entry.company, entry.industry].filter(Boolean).join(' · ') || 'Alumni mentor'}
-          </Text>
+          </ActiveText>
         </View>
         {entry.matchingTags > 0 ? (
           <View style={styles.matchBadge}>
             <Ionicons name="sparkles" size={12} color={colors.secondary} />
-            <Text style={styles.matchBadgeText}>
+            <ActiveText style={styles.matchBadgeText}>
               {entry.matchingTags} match{entry.matchingTags === 1 ? '' : 'es'}
-            </Text>
+            </ActiveText>
           </View>
         ) : (
           <Ionicons name="chevron-down" size={16} color={colors.onSurfaceVariant} />
         )}
-      </TouchableOpacity>
+      </View>
 
       {expanded ? (
         <View style={styles.cardDetail}>

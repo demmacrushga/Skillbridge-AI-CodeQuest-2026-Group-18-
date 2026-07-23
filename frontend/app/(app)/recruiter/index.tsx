@@ -16,7 +16,7 @@ import { useAuth } from '@/context/AuthContext';
 import { colors, typography, spacing, radius } from '@/constants/theme';
 import { getMyPostings } from '@/services/matching';
 import { type Opportunity } from '@/types/matching';
-import { AnimatedFadeIn, AnimatedPressable } from '@/components/ui/AnimatedView';
+import { AnimatedFadeIn, AnimatedPressable, ActiveText } from '@/components/ui/AnimatedView';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 
@@ -69,7 +69,6 @@ export default function RecruiterDashboardScreen() {
           <View style={styles.headerLogoMark}>
             <Ionicons name="compass" size={20} color={colors.onPrimary} />
           </View>
-          <Text style={styles.headerBrandTitle}>SkillBridge</Text>
         </View>
         <TouchableOpacity
           style={styles.headerBtn}
@@ -104,58 +103,54 @@ export default function RecruiterDashboardScreen() {
             <AnimatedFadeIn delay={200}>
               <Text style={styles.sectionTitle}>Overview</Text>
               <View style={styles.statsGrid}>
-                <TouchableOpacity
+                <AnimatedPressable
                   style={styles.statCard}
                   onPress={() => router.push('/(app)/recruiter/postings')}
-                  activeOpacity={0.75}
                 >
                   <View style={[styles.statIconWrap, { backgroundColor: `${colors.tertiary}15` }]}>
                     <Ionicons name="briefcase" size={24} color={colors.tertiary} />
                   </View>
-                  <Text style={styles.statValue}>{activePostings}</Text>
-                  <Text style={styles.statLabel}>Active Jobs</Text>
-                </TouchableOpacity>
+                  <ActiveText style={styles.statValue}>{activePostings}</ActiveText>
+                  <ActiveText style={styles.statLabel}>Active Jobs</ActiveText>
+                </AnimatedPressable>
 
-                <TouchableOpacity
+                <AnimatedPressable
                   style={styles.statCard}
                   onPress={() => router.push('/(app)/recruiter/all-applicants')}
-                  activeOpacity={0.75}
                 >
                   <View style={[styles.statIconWrap, { backgroundColor: `${colors.secondary}15` }]}>
                     <Ionicons name="people" size={24} color={colors.secondary} />
                   </View>
-                  <Text style={styles.statValue}>{totalApplicants}</Text>
-                  <Text style={styles.statLabel}>Total Applicants</Text>
-                </TouchableOpacity>
+                  <ActiveText style={styles.statValue}>{totalApplicants}</ActiveText>
+                  <ActiveText style={styles.statLabel}>Total Applicants</ActiveText>
+                </AnimatedPressable>
 
-                <TouchableOpacity
+                <AnimatedPressable
                   style={styles.statCard}
                   onPress={() => router.push('/(app)/recruiter/postings')}
-                  activeOpacity={0.75}
                 >
                   <View style={[styles.statIconWrap, { backgroundColor: `${colors.primary}15` }]}>
                     <Ionicons name="document-text" size={24} color={colors.primary} />
                   </View>
-                  <Text style={styles.statValue}>{totalPostings}</Text>
-                  <Text style={styles.statLabel}>Total Posted</Text>
-                </TouchableOpacity>
+                  <ActiveText style={styles.statValue}>{totalPostings}</ActiveText>
+                  <ActiveText style={styles.statLabel}>Total Posted</ActiveText>
+                </AnimatedPressable>
               </View>
             </AnimatedFadeIn>
 
             {/* Analytics & Donut Chart Section */}
             <AnimatedFadeIn delay={250}>
               <Text style={styles.sectionTitle}>Hiring Analytics & AI Insights</Text>
-              <TouchableOpacity
+              <AnimatedPressable
                 style={styles.chartCard}
                 onPress={() => router.push('/(app)/recruiter/all-applicants')}
-                activeOpacity={0.85}
               >
                 <View style={styles.chartHeader}>
                   <View style={styles.donutContainer}>
                     <View style={styles.donutOuterRing}>
                       <View style={styles.donutInnerCircle}>
-                        <Text style={styles.donutTotalNum}>{totalApplicants}</Text>
-                        <Text style={styles.donutTotalLabel}>Candidates</Text>
+                        <ActiveText style={styles.donutTotalNum}>{totalApplicants}</ActiveText>
+                        <ActiveText style={styles.donutTotalLabel}>Candidates</ActiveText>
                       </View>
                     </View>
                   </View>
@@ -163,15 +158,15 @@ export default function RecruiterDashboardScreen() {
                   <View style={styles.legendContainer}>
                     <View style={styles.legendItem}>
                       <View style={[styles.legendDot, { backgroundColor: colors.secondary }]} />
-                      <Text style={styles.legendText}>Matched Skills (60%)</Text>
+                      <ActiveText style={styles.legendText}>Matched Skills (60%)</ActiveText>
                     </View>
                     <View style={styles.legendItem}>
                       <View style={[styles.legendDot, { backgroundColor: colors.tertiary }]} />
-                      <Text style={styles.legendText}>Under Review (25%)</Text>
+                      <ActiveText style={styles.legendText}>Under Review (25%)</ActiveText>
                     </View>
                     <View style={styles.legendItem}>
                       <View style={[styles.legendDot, { backgroundColor: colors.primary }]} />
-                      <Text style={styles.legendText}>Verified Portfolio (15%)</Text>
+                      <ActiveText style={styles.legendText}>Verified Portfolio (15%)</ActiveText>
                     </View>
                   </View>
                 </View>
@@ -181,14 +176,14 @@ export default function RecruiterDashboardScreen() {
                     <Ionicons name="sparkles" size={18} color={colors.tertiary} />
                   </View>
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.aiInsightTitle}>AI Talent Matching Active</Text>
-                    <Text style={styles.aiInsightDesc}>
+                    <ActiveText style={styles.aiInsightTitle}>AI Talent Matching Active</ActiveText>
+                    <ActiveText style={styles.aiInsightDesc}>
                       Applicants are ranked by skill verifications. Tap to view candidate profiles.
-                    </Text>
+                    </ActiveText>
                   </View>
                   <Ionicons name="chevron-forward" size={18} color={colors.tertiary} style={{ alignSelf: 'center' }} />
                 </View>
-              </TouchableOpacity>
+              </AnimatedPressable>
             </AnimatedFadeIn>
 
             <AnimatedFadeIn delay={300}>
@@ -201,8 +196,8 @@ export default function RecruiterDashboardScreen() {
                   <View style={[styles.actionIconWrap, { backgroundColor: `${colors.secondary}20` }]}>
                     <Ionicons name="add" size={28} color={colors.secondary} />
                   </View>
-                  <Text style={styles.actionCardTitle}>Post a Job</Text>
-                  <Text style={styles.actionCardDesc}>Create a new opportunity</Text>
+                  <ActiveText style={styles.actionCardTitle}>Post a Job</ActiveText>
+                  <ActiveText style={styles.actionCardDesc}>Create a new opportunity</ActiveText>
                 </AnimatedPressable>
 
                 <AnimatedPressable
@@ -212,8 +207,8 @@ export default function RecruiterDashboardScreen() {
                   <View style={[styles.actionIconWrap, { backgroundColor: `${colors.primary}20` }]}>
                     <Ionicons name="list" size={28} color={colors.primary} />
                   </View>
-                  <Text style={styles.actionCardTitle}>View Postings</Text>
-                  <Text style={styles.actionCardDesc}>Manage active jobs</Text>
+                  <ActiveText style={styles.actionCardTitle}>View Postings</ActiveText>
+                  <ActiveText style={styles.actionCardDesc}>Manage active jobs</ActiveText>
                 </AnimatedPressable>
               </View>
             </AnimatedFadeIn>
@@ -230,46 +225,50 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
     backgroundColor: colors.surface,
   },
   headerLeft: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   headerLogoMark: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
+    width: 36,
+    height: 36,
+    borderRadius: radius.md,
     backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  headerBrandTitle: { ...typography.headlineSm, color: colors.onSurface },
+  headerBrandTitle: { ...typography.headlineSm, color: colors.primary, fontSize: 20 },
   headerBtn: {
     width: 40,
     height: 40,
-    borderRadius: 20,
+    borderRadius: radius.full,
     backgroundColor: colors.surfaceContainerLow,
+    borderWidth: 1,
+    borderColor: colors.outlineVariant,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  scrollContent: { padding: spacing.md, paddingBottom: spacing.xxl },
-  
-  greetingRow: { flexDirection: 'row', alignItems: 'center', marginBottom: spacing.xl },
-  greetingHello: { fontFamily: 'Inter_500Medium', fontSize: 15, color: colors.onSurfaceVariant },
-  greetingName: { ...typography.headlineLg, color: colors.onSurface, marginTop: 2, fontSize: 32 },
+  scrollContent: { padding: spacing.lg, paddingBottom: spacing.xxl + 80 },
+
+  greetingRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.lg },
+  greetingHello: { ...typography.bodyMd, color: colors.onSurfaceVariant },
+  greetingName: { ...typography.headlineMd, color: colors.primary, marginTop: 2 },
   roleBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: `${colors.secondary}15`,
+    backgroundColor: colors.successContainer,
     paddingHorizontal: spacing.sm,
-    paddingVertical: 4,
+    paddingVertical: 6,
     borderRadius: radius.full,
+    borderWidth: 1,
+    borderColor: `${colors.secondary}35`,
     gap: 4,
   },
   roleBadgeText: { ...typography.labelSm, color: colors.secondary },
-  
-  sectionTitle: { ...typography.headlineSm, color: colors.onSurface, marginBottom: spacing.md },
-  
+
+  sectionTitle: { ...typography.headlineSm, color: colors.primary, marginBottom: spacing.md },
+
   statsGrid: {
     flexDirection: 'row',
     gap: spacing.md,
@@ -294,7 +293,7 @@ const styles = StyleSheet.create({
   },
   statValue: { ...typography.headlineLg, color: colors.onSurface, fontSize: 24, marginBottom: 2 },
   statLabel: { ...typography.labelSm, color: colors.onSurfaceVariant, textAlign: 'center' },
-  
+
   actionsGrid: {
     flexDirection: 'row',
     gap: spacing.md,
@@ -354,7 +353,7 @@ const styles = StyleSheet.create({
   },
   donutTotalNum: { ...typography.headlineLg, fontSize: 20, color: colors.onSurface },
   donutTotalLabel: { ...typography.labelSm, fontSize: 10, color: colors.onSurfaceVariant },
-  
+
   legendContainer: { flex: 1, gap: spacing.xs },
   legendItem: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
   legendDot: { width: 10, height: 10, borderRadius: 5 },

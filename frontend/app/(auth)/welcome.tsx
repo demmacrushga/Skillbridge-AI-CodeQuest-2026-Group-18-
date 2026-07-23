@@ -121,7 +121,7 @@ export default function WelcomeScreen() {
         <AnimatedFadeIn delay={450} duration={500} slideDistance={20} style={{ width: '100%', marginTop: spacing.md }}>
           <View style={styles.innovationMatrix}>
             <View style={styles.innovationCard}>
-              <View style={[styles.cardIconWrap, { backgroundColor: '#EFF6FF' }]}>
+              <View style={[styles.cardIconWrap, { backgroundColor: colors.tertiaryContainer }]}>
                 <Ionicons name="hardware-chip-outline" size={20} color={colors.tertiary} />
               </View>
               <Text style={styles.cardTitle}>AI Vector Match</Text>
@@ -129,7 +129,7 @@ export default function WelcomeScreen() {
             </View>
 
             <View style={styles.innovationCard}>
-              <View style={[styles.cardIconWrap, { backgroundColor: '#ECFDF5' }]}>
+              <View style={[styles.cardIconWrap, { backgroundColor: colors.successContainer }]}>
                 <Ionicons name="shield-checkmark-outline" size={20} color={colors.secondary} />
               </View>
               <Text style={styles.cardTitle}>Verified Skills</Text>
@@ -137,8 +137,8 @@ export default function WelcomeScreen() {
             </View>
 
             <View style={styles.innovationCard}>
-              <View style={[styles.cardIconWrap, { backgroundColor: '#F5F3FF' }]}>
-                <Ionicons name="rocket-outline" size={20} color="#7C3AED" />
+              <View style={[styles.cardIconWrap, { backgroundColor: colors.tertiaryContainer }]}>
+                <Ionicons name="rocket-outline" size={20} color={colors.tertiary} />
               </View>
               <Text style={styles.cardTitle}>Smart Agent</Text>
               <Text style={styles.cardSub}>Automated Growth</Text>
@@ -174,7 +174,7 @@ export default function WelcomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
     paddingHorizontal: spacing.md,
   },
   hero: {
@@ -189,8 +189,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.xs + 2,
-    backgroundColor: '#F0FDF4',
-    borderColor: '#BBF7D0',
+    backgroundColor: colors.successContainer,
+    borderColor: `${colors.secondary}35`,
     borderWidth: 1,
     paddingHorizontal: spacing.md,
     paddingVertical: 6,
@@ -217,9 +217,9 @@ const styles = StyleSheet.create({
     width: Math.min(SCREEN_WIDTH * 0.8, 340),
     height: 160,
     borderRadius: 80,
-    backgroundColor: '#05966914',
+    backgroundColor: `${colors.secondary}14`,
     borderWidth: 1.5,
-    borderColor: '#05966925',
+    borderColor: `${colors.secondary}25`,
   },
   logoMarkWrap: {
     justifyContent: 'center',
@@ -258,13 +258,13 @@ const styles = StyleSheet.create({
   },
   innovationCard: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: colors.surfaceCard,
     borderRadius: radius.md + 2,
     paddingVertical: spacing.sm + 2,
     paddingHorizontal: 6,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: colors.outlineVariant,
   },
   cardIconWrap: {
     width: 36,

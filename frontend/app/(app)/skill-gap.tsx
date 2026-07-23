@@ -20,6 +20,7 @@ import { useAuth } from '@/context/AuthContext';
 import { colors, typography, spacing, radius } from '@/constants/theme';
 import { analyseCV, getReports, deleteReport } from '@/services/skillGap';
 import { type GapReport } from '@/types/skillGap';
+import { AnimatedFadeIn, AnimatedPressable, ActiveText } from '@/components/ui/AnimatedView';
 
 function usePulse() {
   const anim = useRef(new Animated.Value(1)).current;
@@ -58,18 +59,18 @@ function ReportRow({
   const gapColor = getPriorityColor(report.gaps.length);
 
   return (
-    <TouchableOpacity style={styles.reportRow} onPress={onPress} activeOpacity={0.75}>
+    <AnimatedPressable style={styles.reportRow} onPress={onPress}>
       <View style={[styles.reportRowIcon, { backgroundColor: `${gapColor}12` }]}>
         <Ionicons name="analytics-outline" size={18} color={gapColor} />
       </View>
       <View style={styles.reportRowBody}>
-        <Text style={styles.reportRowTitle} numberOfLines={1}>{report.targetRole}</Text>
-        <Text style={styles.reportRowMeta}>{dateStr}</Text>
+        <ActiveText style={styles.reportRowTitle} numberOfLines={1}>{report.targetRole}</ActiveText>
+        <ActiveText style={styles.reportRowMeta}>{dateStr}</ActiveText>
       </View>
       <View style={[styles.gapBadge, { backgroundColor: `${gapColor}15` }]}>
-        <Text style={[styles.gapBadgeText, { color: gapColor }]}>
+        <ActiveText style={[styles.gapBadgeText, { color: gapColor }]}>
           {report.gaps.length} {report.gaps.length === 1 ? 'gap' : 'gaps'}
-        </Text>
+        </ActiveText>
       </View>
       <TouchableOpacity
         onPress={onDelete}
@@ -84,7 +85,7 @@ function ReportRow({
           color={isDeleting ? colors.outline : colors.error}
         />
       </TouchableOpacity>
-    </TouchableOpacity>
+    </AnimatedPressable>
   );
 }
 
@@ -270,6 +271,23 @@ export default function SkillGapScreen() {
                 autoCapitalize="words"
                 returnKeyType="done"
               />
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
+                {['Software Engineer', 'Data Analyst', 'UI/UX Designer', 'Cybersecurity', 'Product Manager'].map(role => {
+                  const isSelected = targetRole === role;
+                  return (
+                    <AnimatedPressable
+                      key={role}
+                      style={[
+                        styles.roleChip,
+                        isSelected && { backgroundColor: colors.secondary, borderColor: colors.secondary }
+                      ]}
+                      onPress={() => setTargetRole(role)}
+                    >
+                      <ActiveText style={[styles.roleChipText, isSelected && { color: colors.onPrimary }]}>{role}</ActiveText>
+                    </AnimatedPressable>
+                  );
+                })}
+              </View>
             </View>
 
             {/* Analyse button */}
@@ -637,5 +655,18 @@ const styles = StyleSheet.create({
   gapBadgeText: {
     fontFamily: 'Inter_600SemiBold',
     fontSize: 11,
+  },
+  roleChip: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: radius.full,
+    backgroundColor: colors.surfaceContainerLow,
+    borderWidth: 1,
+    borderColor: colors.outlineVariant,
+  },
+  roleChipText: {
+    ...typography.labelSm,
+    fontSize: 12,
+    color: colors.onSurfaceVariant,
   },
 });

@@ -30,7 +30,14 @@ export default function RootLayout() {
   return (
     <SafeAreaProvider>
       <AuthProvider>
-        <Stack screenOptions={{ headerShown: false }} />
+        <Stack
+          screenOptions={{
+            headerShown: false,
+            animation: 'fade_from_bottom',
+            animationDuration: 240,
+            contentStyle: { backgroundColor: '#F8FAFC' },
+          }}
+        />
         <StatusBar style="auto" />
       </AuthProvider>
     </SafeAreaProvider>

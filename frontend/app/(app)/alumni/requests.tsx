@@ -16,7 +16,7 @@ import { useAuth } from '@/context/AuthContext';
 import { colors, typography, spacing, radius } from '@/constants/theme';
 import { getIncomingRequests, acceptRequest, declineRequest, getMyPairs } from '@/services/mentorship';
 import { type MentorshipRequest, type MentorshipPair } from '@/types/mentorship';
-import { AnimatedFadeIn, AnimatedPressable } from '@/components/ui/AnimatedView';
+import { AnimatedFadeIn, AnimatedPressable, ActiveText } from '@/components/ui/AnimatedView';
 
 export default function AlumniRequestsScreen() {
   const { state } = useAuth();
@@ -200,11 +200,11 @@ export default function AlumniRequestsScreen() {
                         <Ionicons name="school" size={20} color={colors.secondary} />
                       </View>
                       <View style={{ flex: 1 }}>
-                        <Text style={styles.studentTitle}>Mentee Student</Text>
-                        <Text style={styles.studentId}>Student ID: {pair.studentId.substring(0, 8)}...</Text>
+                        <ActiveText style={styles.studentTitle}>Mentee Student</ActiveText>
+                        <ActiveText style={styles.studentId}>Student ID: {pair.studentId.substring(0, 8)}...</ActiveText>
                       </View>
                       <View style={styles.activePill}>
-                        <Text style={styles.activePillText}>Active Mentorship</Text>
+                        <ActiveText style={styles.activePillText}>Active Mentorship</ActiveText>
                       </View>
                     </View>
                   </AnimatedPressable>

@@ -18,7 +18,8 @@ import { SkeletonProfile } from '@/components/ui/SkeletonCard';
 import { NaviiAvatar } from '@/components/NaviiAvatar';
 import { useAuth } from '@/context/AuthContext';
 import { colors, typography, spacing, radius } from '@/constants/theme';
-import { AnimatedFadeIn, AnimatedPressable } from '@/components/ui/AnimatedView';
+import { AnimatedFadeIn, AnimatedPressable, ActiveText } from '@/components/ui/AnimatedView';
+import { AnimatedTextInput } from '@/components/ui/AnimatedTextInput';
 import { getRoadmap } from '@/services/career';
 import { type Roadmap } from '@/types/career';
 import { getMyPortfolio } from '@/services/portfolio';
@@ -34,9 +35,22 @@ interface InfoRowProps {
 }
 
 function InfoRow({ icon, label, value, onPress }: InfoRowProps) {
-  const Wrapper = onPress ? TouchableOpacity : View;
+  if (onPress) {
+    return (
+      <AnimatedPressable style={styles.infoRow} onPress={onPress}>
+        <View style={styles.infoIconWrap}>
+          <Ionicons name={icon} size={16} color={colors.onSurfaceVariant} />
+        </View>
+        <View style={styles.infoTextWrap}>
+          <ActiveText style={styles.infoLabel}>{label}</ActiveText>
+          <ActiveText style={styles.infoValue}>{value}</ActiveText>
+        </View>
+        <Ionicons name="chevron-forward" size={16} color={colors.outline} />
+      </AnimatedPressable>
+    );
+  }
   return (
-    <Wrapper style={styles.infoRow} onPress={onPress} activeOpacity={0.7}>
+    <View style={styles.infoRow}>
       <View style={styles.infoIconWrap}>
         <Ionicons name={icon} size={16} color={colors.onSurfaceVariant} />
       </View>
@@ -44,10 +58,7 @@ function InfoRow({ icon, label, value, onPress }: InfoRowProps) {
         <Text style={styles.infoLabel}>{label}</Text>
         <Text style={styles.infoValue}>{value}</Text>
       </View>
-      {onPress && (
-        <Ionicons name="chevron-forward" size={16} color={colors.outline} />
-      )}
-    </Wrapper>
+    </View>
   );
 }
 
@@ -60,13 +71,13 @@ interface SettingsRowProps {
 
 function SettingsRow({ icon, label, onPress, color }: SettingsRowProps) {
   return (
-    <TouchableOpacity style={styles.settingsRow} onPress={onPress} activeOpacity={0.7}>
+    <AnimatedPressable style={styles.settingsRow} onPress={onPress}>
       <View style={[styles.settingsIconWrap, color ? { backgroundColor: `${color}15` } : {}]}>
         <Ionicons name={icon} size={16} color={color ?? colors.onSurfaceVariant} />
       </View>
-      <Text style={[styles.settingsLabel, color ? { color } : {}]}>{label}</Text>
+      <ActiveText style={[styles.settingsLabel, color ? { color } : {}]}>{label}</ActiveText>
       <Ionicons name="chevron-forward" size={16} color={colors.outline} style={{ marginLeft: 'auto' }} />
-    </TouchableOpacity>
+    </AnimatedPressable>
   );
 }
 
@@ -149,7 +160,6 @@ export default function ProfileScreen() {
           <View style={styles.logoMark}>
             <Ionicons name="compass" size={18} color={colors.onPrimary} />
           </View>
-          <Text style={styles.brandName}>SkillBridge</Text>
         </View>
         <TouchableOpacity style={styles.headerEditBtn} onPress={openEdit} activeOpacity={0.7}>
           <Ionicons name="create-outline" size={18} color={colors.primary} />
@@ -167,7 +177,7 @@ export default function ProfileScreen() {
             <AnimatedFadeIn delay={100} duration={400}>
               <AnimatedPressable onPress={openEdit} activeOpacity={0.95}>
                 <LinearGradient
-                  colors={[colors.primary, colors.tertiary]}
+                  colors={[colors.primary, '#1E3A8A', colors.secondary]}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}
                   style={styles.avatarCard}
@@ -176,40 +186,39 @@ export default function ProfileScreen() {
                     <Ionicons name="pencil" size={16} color={colors.primary} />
                   </TouchableOpacity>
 
-                <NaviiAvatar
-                  seed={user?.id}
-                  size={88}
-                  fallback={initials}
-                  style={styles.avatar}
-                />
-                <Text style={styles.nameCard}>{user?.firstName ?? 'Guest'} {user?.lastName ?? ''}</Text>
-                <Text style={styles.emailTextCard}>{user?.email ?? ''}</Text>
-                <View style={styles.badgeRow}>
-                  <View style={styles.rolePill}>
-                    <Ionicons name="school-outline" size={13} color={colors.secondary} />
-                    <Text style={styles.roleText}>{roleLabel}</Text>
+                  <NaviiAvatar
+                    seed={user?.id}
+                    size={88}
+                    fallback={initials}
+                    style={styles.avatar}
+                  />
+                  <Text style={styles.nameCard}>{user?.firstName ?? 'Guest'} {user?.lastName ?? ''}</Text>
+                  <Text style={styles.emailTextCard}>{user?.email ?? ''}</Text>
+                  <View style={styles.badgeRow}>
+                    <View style={styles.rolePill}>
+                      <Ionicons name="school-outline" size={13} color={colors.secondary} />
+                      <Text style={styles.roleText}>{roleLabel}</Text>
+                    </View>
+                    <View style={[styles.verifiedPill, user?.emailVerified && styles.verifiedPillActive]}>
+                      <Ionicons
+                        name={user?.emailVerified ? 'shield-checkmark' : 'shield-outline'}
+                        size={12}
+                        color={user?.emailVerified ? colors.secondary : colors.outline}
+                      />
+                      <Text style={[styles.verifiedText, user?.emailVerified && styles.verifiedTextActive]}>
+                        {user?.emailVerified ? 'Verified' : 'Unverified'}
+                      </Text>
+                    </View>
                   </View>
-                  <View style={[styles.verifiedPill, user?.emailVerified && styles.verifiedPillActive]}>
-                    <Ionicons
-                      name={user?.emailVerified ? 'shield-checkmark' : 'shield-outline'}
-                      size={12}
-                      color={user?.emailVerified ? colors.secondary : colors.outline}
-                    />
-                    <Text style={[styles.verifiedText, user?.emailVerified && styles.verifiedTextActive]}>
-                      {user?.emailVerified ? 'Verified' : 'Unverified'}
-                    </Text>
-                  </View>
-                </View>
                 </LinearGradient>
               </AnimatedPressable>
             </AnimatedFadeIn>
 
             {/* Featured Section (Portfolio for Student / Hiring Hub for Recruiter / Mentor Hub for Alumni) */}
             <AnimatedFadeIn delay={150} duration={400}>
-              <TouchableOpacity 
+              <AnimatedPressable
                 style={styles.portfolioFeaturedCard}
                 onPress={() => router.push(user?.role === 'RECRUITER' ? './recruiter/postings' : user?.role === 'ALUMNI' ? './alumni' : './portfolio')}
-                activeOpacity={0.9}
               >
                 <LinearGradient
                   colors={[`${colors.primary}15`, `${colors.tertiary}10`]}
@@ -218,135 +227,134 @@ export default function ProfileScreen() {
                 >
                   <View style={styles.portfolioFeaturedHeader}>
                     <View style={styles.portfolioFeaturedIconWrap}>
-                      <Ionicons 
-                        name={user?.role === 'RECRUITER' ? "business" : user?.role === 'ALUMNI' ? "easel" : "briefcase"} 
-                        size={24} 
-                        color={colors.primary} 
+                      <Ionicons
+                        name={user?.role === 'RECRUITER' ? "business" : user?.role === 'ALUMNI' ? "easel" : "briefcase"}
+                        size={24}
+                        color={colors.primary}
                       />
                     </View>
                     <View style={styles.portfolioFeaturedTextWrap}>
-                      <Text style={styles.portfolioFeaturedTitle}>
+                      <ActiveText style={styles.portfolioFeaturedTitle}>
                         {user?.role === 'RECRUITER' ? 'Company & Hiring Hub' : user?.role === 'ALUMNI' ? 'Alumni Educator Hub' : 'My Portfolio'}
-                      </Text>
-                      <Text style={styles.portfolioFeaturedDesc}>
+                      </ActiveText>
+                      <ActiveText style={styles.portfolioFeaturedDesc}>
                         {user?.role === 'RECRUITER' ? 'Manage postings, candidates & specifications' : user?.role === 'ALUMNI' ? 'Manage mentorship requests, mentees & teaching specs' : 'Manage your skills, projects & certifications'}
-                      </Text>
+                      </ActiveText>
                     </View>
                     <Ionicons name="chevron-forward" size={20} color={colors.primary} />
                   </View>
                   {user?.role !== 'RECRUITER' && user?.role !== 'ALUMNI' && (
                     <View style={styles.portfolioFeaturedStats}>
                       <View style={styles.portfolioFeaturedStatBox}>
-                        <Text style={styles.portfolioFeaturedStatNum}>{portfolioCount}</Text>
-                        <Text style={styles.portfolioFeaturedStatLabel}>Items</Text>
+                        <ActiveText style={styles.portfolioFeaturedStatNum}>{portfolioCount}</ActiveText>
+                        <ActiveText style={styles.portfolioFeaturedStatLabel}>Items</ActiveText>
                       </View>
                       <View style={styles.portfolioFeaturedDivider} />
                       <View style={styles.portfolioFeaturedStatBox}>
-                        <Text style={styles.portfolioFeaturedStatNum}>{doneCount}</Text>
-                        <Text style={styles.portfolioFeaturedStatLabel}>Milestones</Text>
+                        <ActiveText style={styles.portfolioFeaturedStatNum}>{doneCount}</ActiveText>
+                        <ActiveText style={styles.portfolioFeaturedStatLabel}>Milestones</ActiveText>
                       </View>
                     </View>
                   )}
                 </LinearGradient>
-              </TouchableOpacity>
+              </AnimatedPressable>
             </AnimatedFadeIn>
 
             {/* EXP Card */}
             {expState && (
               <AnimatedFadeIn delay={200} duration={400}>
-                <TouchableOpacity 
-                  style={styles.expCard} 
+                <AnimatedPressable
+                  style={styles.expCard}
                   onPress={() => router.push('./achievements')}
-                  activeOpacity={0.8}
                 >
                   <View style={styles.expHeader}>
                     <View style={styles.expHeaderLeft}>
                       <Ionicons name="star" size={20} color={colors.secondary} />
-                      <Text style={styles.expLevelText}>Level {expState.currentLevel}</Text>
+                      <ActiveText style={styles.expLevelText}>Level {expState.currentLevel}</ActiveText>
                     </View>
-                    <Text style={styles.expProgressText}>{expState.currentExp} / {expState.nextLevelExp} XP</Text>
+                    <ActiveText style={styles.expProgressText}>{expState.currentExp} / {expState.nextLevelExp} XP</ActiveText>
                   </View>
                   <View style={styles.expTrack}>
                     <View style={[styles.expFill, { width: `${Math.min(100, Math.max(0, (expState.currentExp / expState.nextLevelExp) * 100))}%` }]} />
                   </View>
-                </TouchableOpacity>
+                </AnimatedPressable>
               </AnimatedFadeIn>
             )}
 
-        {/* Account info */}
-        <AnimatedFadeIn delay={300} duration={400}>
-          <Text style={styles.sectionTitle}>Account Details</Text>
-          <View style={styles.infoCard}>
-            <InfoRow icon="mail-outline" label="Email" value={user?.email ?? '—'} />
-            <InfoRow icon="person-outline" label="Full Name" value={`${user?.firstName ?? ''} ${user?.lastName ?? ''}`.trim() || '—'} onPress={openEdit} />
-            <InfoRow icon="ribbon-outline" label="Role" value={roleLabel} />
-            <InfoRow
-              icon={user?.emailVerified ? 'checkmark-circle-outline' : 'close-circle-outline'}
-              label="Email Verified"
-              value={user?.emailVerified ? 'Yes' : 'No'}
-            />
-          </View>
-        </AnimatedFadeIn>
+            {/* Account info */}
+            <AnimatedFadeIn delay={300} duration={400}>
+              <Text style={styles.sectionTitle}>Account Details</Text>
+              <View style={styles.infoCard}>
+                <InfoRow icon="mail-outline" label="Email" value={user?.email ?? '—'} />
+                <InfoRow icon="person-outline" label="Full Name" value={`${user?.firstName ?? ''} ${user?.lastName ?? ''}`.trim() || '—'} onPress={openEdit} />
+                <InfoRow icon="ribbon-outline" label="Role" value={roleLabel} />
+                <InfoRow
+                  icon={user?.emailVerified ? 'checkmark-circle-outline' : 'close-circle-outline'}
+                  label="Email Verified"
+                  value={user?.emailVerified ? 'Yes' : 'No'}
+                />
+              </View>
+            </AnimatedFadeIn>
 
-        {/* Settings links */}
-        <AnimatedFadeIn delay={400} duration={400}>
-          <Text style={styles.sectionTitle}>Settings</Text>
-          <View style={styles.infoCard}>
-            <SettingsRow
-              icon="notifications-outline"
-              label="Notifications"
-              color={colors.tertiary}
-              onPress={() => router.push('./notifications')}
-            />
-            <View style={styles.rowDivider} />
-            <SettingsRow
-              icon="lock-closed-outline"
-              label="Change Password"
-              color={colors.primary}
-              onPress={() => {
-                if (!user?.email) return;
-                Alert.alert(
-                  'Password Reset',
-                  `A password reset link will be sent to your email address (${user.email}). Would you like to send it?`,
-                  [
-                    { text: 'Cancel', style: 'cancel' },
-                    {
-                      text: 'Send Link',
-                      onPress: async () => {
-                        try {
-                          await forgotPassword(user.email);
-                          Alert.alert('Link Sent', `Password reset instructions have been sent to ${user.email}.`);
-                        } catch (e: any) {
-                          Alert.alert('Error', e.message ?? 'Failed to send reset link.');
-                        }
-                      },
-                    },
-                  ]
-                );
-              }}
-            />
-            <View style={styles.rowDivider} />
-            <SettingsRow
-              icon="help-circle-outline"
-              label="Help & Support"
-              color={colors.secondary}
-              onPress={() => router.push('/(app)/help-support')}
-            />
-            <View style={styles.rowDivider} />
-            <SettingsRow
-              icon="information-circle-outline"
-              label="About SkillBridge"
-              color={colors.onSurfaceVariant}
-              onPress={() => router.push('/(app)/about')}
-            />
-          </View>
-        </AnimatedFadeIn>
+            {/* Settings links */}
+            <AnimatedFadeIn delay={400} duration={400}>
+              <Text style={styles.sectionTitle}>Settings</Text>
+              <View style={styles.infoCard}>
+                <SettingsRow
+                  icon="notifications-outline"
+                  label="Notifications"
+                  color={colors.tertiary}
+                  onPress={() => router.push('./notifications')}
+                />
+                <View style={styles.rowDivider} />
+                <SettingsRow
+                  icon="lock-closed-outline"
+                  label="Change Password"
+                  color={colors.primary}
+                  onPress={() => {
+                    if (!user?.email) return;
+                    Alert.alert(
+                      'Password Reset',
+                      `A password reset link will be sent to your email address (${user.email}). Would you like to send it?`,
+                      [
+                        { text: 'Cancel', style: 'cancel' },
+                        {
+                          text: 'Send Link',
+                          onPress: async () => {
+                            try {
+                              await forgotPassword(user.email);
+                              Alert.alert('Link Sent', `Password reset instructions have been sent to ${user.email}.`);
+                            } catch (e: any) {
+                              Alert.alert('Error', e.message ?? 'Failed to send reset link.');
+                            }
+                          },
+                        },
+                      ]
+                    );
+                  }}
+                />
+                <View style={styles.rowDivider} />
+                <SettingsRow
+                  icon="help-circle-outline"
+                  label="Help & Support"
+                  color={colors.secondary}
+                  onPress={() => router.push('/(app)/help-support')}
+                />
+                <View style={styles.rowDivider} />
+                <SettingsRow
+                  icon="information-circle-outline"
+                  label="About SkillBridge"
+                  color={colors.onSurfaceVariant}
+                  onPress={() => router.push('/(app)/about')}
+                />
+              </View>
+            </AnimatedFadeIn>
 
             {/* Sign out */}
             <AnimatedFadeIn delay={400} duration={400}>
               <AnimatedPressable style={styles.logoutBtn} onPress={handleLogout} accessibilityRole="button" accessibilityLabel="Sign out">
                 <Ionicons name="log-out-outline" size={18} color={colors.onPrimary} />
-                <Text style={styles.logoutText}>Sign Out</Text>
+                <ActiveText style={styles.logoutText}>Sign Out</ActiveText>
               </AnimatedPressable>
             </AnimatedFadeIn>
           </>
@@ -370,37 +378,34 @@ export default function ProfileScreen() {
               </TouchableOpacity>
             </View>
 
-            <View style={styles.modalField}>
-              <Text style={styles.modalFieldLabel}>First Name</Text>
-              <TextInput
-                style={styles.modalInput}
-                value={editFirstName}
-                onChangeText={setEditFirstName}
-                placeholder="First name"
-                placeholderTextColor={colors.outline}
-                autoCapitalize="words"
-              />
-            </View>
+            <AnimatedTextInput
+              label="First Name"
+              icon="person-outline"
+              value={editFirstName}
+              onChangeText={setEditFirstName}
+              placeholder="Enter first name"
+              autoCapitalize="words"
+              containerStyle={{ marginBottom: spacing.md }}
+            />
 
-            <View style={styles.modalField}>
-              <Text style={styles.modalFieldLabel}>Last Name</Text>
-              <TextInput
-                style={styles.modalInput}
-                value={editLastName}
-                onChangeText={setEditLastName}
-                placeholder="Last name"
-                placeholderTextColor={colors.outline}
-                autoCapitalize="words"
-              />
-            </View>
+            <AnimatedTextInput
+              label="Last Name"
+              icon="person-outline"
+              value={editLastName}
+              onChangeText={setEditLastName}
+              placeholder="Enter last name"
+              autoCapitalize="words"
+              containerStyle={{ marginBottom: spacing.md }}
+            />
 
-            <View style={styles.modalField}>
-              <Text style={styles.modalFieldLabel}>Email</Text>
-              <View style={[styles.modalInput, styles.modalInputDisabled]}>
-                <Text style={styles.modalInputDisabledText}>{user?.email ?? ''}</Text>
-              </View>
-              <Text style={styles.modalHint}>Email cannot be changed</Text>
-            </View>
+            <AnimatedTextInput
+              label="Email Address"
+              icon="mail-outline"
+              value={user?.email ?? ''}
+              editable={false}
+              containerStyle={{ marginBottom: spacing.sm }}
+            />
+            <Text style={styles.modalHint}>Email cannot be changed</Text>
 
             <TouchableOpacity style={styles.modalSaveBtn} onPress={handleSaveProfile} activeOpacity={0.8}>
               <Ionicons name="checkmark" size={18} color={colors.onPrimary} />
@@ -481,18 +486,18 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 2,
   },
-  
+
   /* Portfolio Featured Section */
   portfolioFeaturedCard: {
     marginBottom: spacing.md,
     borderRadius: radius.xl,
     backgroundColor: colors.surfaceCard,
     borderWidth: 1,
-    borderColor: `${colors.primary}25`,
+    borderColor: `${colors.secondary}25`,
     overflow: 'hidden',
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
+    shadowColor: colors.secondary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
     shadowRadius: 8,
     elevation: 2,
   },
@@ -566,12 +571,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
-    backgroundColor: '#ECFDF5',
+    backgroundColor: colors.successContainer,
     borderRadius: radius.full,
     paddingHorizontal: spacing.sm,
     paddingVertical: 5,
     borderWidth: 1,
-    borderColor: '#A7F3D0',
+    borderColor: `${colors.secondary}35`,
   },
   roleText: { ...typography.labelSm, color: colors.secondary },
   verifiedPill: {
@@ -586,8 +591,8 @@ const styles = StyleSheet.create({
     borderColor: colors.outlineVariant,
   },
   verifiedPillActive: {
-    backgroundColor: '#ECFDF5',
-    borderColor: '#A7F3D0',
+    backgroundColor: colors.successContainer,
+    borderColor: `${colors.secondary}35`,
   },
   verifiedText: { ...typography.labelSm, color: colors.outline, fontSize: 11 },
   verifiedTextActive: { color: colors.secondary },
@@ -601,16 +606,26 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xl,
     borderWidth: 1,
     borderColor: colors.outlineVariant,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 4,
   },
-  
+
   /* EXP Card */
   expCard: {
     backgroundColor: colors.surfaceCard,
     padding: spacing.lg,
     borderRadius: radius.xl,
     borderWidth: 1,
-    borderColor: colors.outlineVariant,
+    borderColor: `${colors.secondary}25`,
     marginBottom: spacing.md,
+    shadowColor: colors.secondary,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 3,
   },
   expHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.sm },
   expHeaderLeft: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
@@ -657,10 +672,10 @@ const styles = StyleSheet.create({
     borderColor: colors.outlineVariant,
     overflow: 'hidden',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 4,
-    elevation: 1,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 4,
   },
   infoRow: {
     flexDirection: 'row',
@@ -729,11 +744,14 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surfaceCard,
     borderRadius: radius.xl,
     padding: spacing.lg,
-    elevation: 8,
+    paddingTop: spacing.lg + 4,
+    elevation: 12,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.25,
+    shadowRadius: 24,
+    borderTopWidth: 4,
+    borderTopColor: colors.secondary,
   },
   modalHeader: {
     flexDirection: 'row',
@@ -769,9 +787,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: spacing.sm,
     backgroundColor: colors.secondary,
-    borderRadius: radius.md,
+    borderRadius: radius.xl,
     paddingVertical: 16,
-    marginTop: spacing.sm,
+    marginTop: spacing.md,
+    shadowColor: colors.secondary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
   },
   modalSaveBtnText: { ...typography.labelMd, color: colors.onPrimary, fontSize: 16 },
 });

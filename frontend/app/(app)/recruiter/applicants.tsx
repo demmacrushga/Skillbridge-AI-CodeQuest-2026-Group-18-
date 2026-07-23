@@ -14,7 +14,7 @@ import { useAuth } from '@/context/AuthContext';
 import { colors, typography, spacing, radius } from '@/constants/theme';
 import { getApplicants } from '@/services/matching';
 import { type Applicant } from '@/types/matching';
-import { AnimatedFadeIn, AnimatedPressable } from '@/components/ui/AnimatedView';
+import { AnimatedFadeIn, AnimatedPressable, ActiveText } from '@/components/ui/AnimatedView';
 
 export default function ApplicantsScreen() {
   const { opportunityId, title } = useLocalSearchParams<{ opportunityId: string; title: string }>();
@@ -87,12 +87,12 @@ export default function ApplicantsScreen() {
                     <Ionicons name="person" size={20} color={colors.primary} />
                   </View>
                   <View style={styles.applicantInfo}>
-                    <Text style={styles.studentIdLabel}>Student ID</Text>
-                    <Text style={styles.studentIdText}>{a.studentId}</Text>
+                    <ActiveText style={styles.studentIdLabel}>Student ID</ActiveText>
+                    <ActiveText style={styles.studentIdText}>{a.studentId}</ActiveText>
                   </View>
                   <View style={styles.dateInfo}>
-                    <Text style={styles.dateLabel}>Applied</Text>
-                    <Text style={styles.dateText}>{new Date(a.appliedAt).toLocaleDateString()}</Text>
+                    <ActiveText style={styles.dateLabel}>Applied</ActiveText>
+                    <ActiveText style={styles.dateText}>{new Date(a.appliedAt).toLocaleDateString()}</ActiveText>
                   </View>
                   <Ionicons name="chevron-forward" size={20} color={colors.outline} style={{ marginLeft: spacing.xs }} />
                 </AnimatedPressable>
@@ -171,7 +171,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: radius.full,
-    backgroundColor: `${colors.primary}15`,
+    backgroundColor: `${colors.secondary}15`,
     alignItems: 'center',
     justifyContent: 'center',
   },

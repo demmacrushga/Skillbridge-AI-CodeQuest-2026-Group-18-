@@ -17,7 +17,7 @@ import { useAuth } from '@/context/AuthContext';
 import { colors, typography, spacing, radius } from '@/constants/theme';
 import { postOpportunity } from '@/services/matching';
 import { type PostOpportunityPayload, type SkillRequirement, type OpportunityType } from '@/types/matching';
-import { AnimatedFadeIn, AnimatedPressable } from '@/components/ui/AnimatedView';
+import { AnimatedFadeIn, AnimatedPressable, ActiveText } from '@/components/ui/AnimatedView';
 import { AnimatedTextInput } from '@/components/ui/AnimatedTextInput';
 
 export default function PostOpportunityScreen() {
@@ -305,7 +305,7 @@ export default function PostOpportunityScreen() {
         <View style={styles.bottomNav}>
           {step < 3 ? (
             <AnimatedPressable style={styles.submitBtn} onPress={handleNextStep}>
-              <Text style={styles.submitBtnText}>Continue</Text>
+              <ActiveText style={styles.submitBtnText}>Continue</ActiveText>
               <Ionicons name="arrow-forward" size={18} color={colors.onPrimary} />
             </AnimatedPressable>
           ) : (
@@ -318,7 +318,7 @@ export default function PostOpportunityScreen() {
                 <ActivityIndicator color={colors.onPrimary} />
               ) : (
                 <>
-                  <Text style={styles.submitBtnText}>Publish Opportunity</Text>
+                  <ActiveText style={styles.submitBtnText}>Publish Opportunity</ActiveText>
                   <Ionicons name="checkmark-done" size={20} color={colors.onPrimary} />
                 </>
               )}
@@ -427,13 +427,13 @@ const styles = StyleSheet.create({
   skillChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: `${colors.primary}15`,
+    backgroundColor: `${colors.secondary}15`,
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: radius.full,
     gap: 6,
   },
-  skillChipText: { ...typography.labelMd, fontSize: 13, color: colors.primary },
+  skillChipText: { ...typography.labelMd, fontSize: 13, color: colors.secondary },
   
   addSkillBox: {
     backgroundColor: colors.surfaceCard,

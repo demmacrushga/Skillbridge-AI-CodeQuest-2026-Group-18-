@@ -16,7 +16,7 @@ import { useAuth } from '@/context/AuthContext';
 import { colors, typography, spacing, radius } from '@/constants/theme';
 import { getMyPostings, getApplicants } from '@/services/matching';
 import { type Applicant, type Opportunity } from '@/types/matching';
-import { AnimatedFadeIn, AnimatedPressable } from '@/components/ui/AnimatedView';
+import { AnimatedFadeIn, AnimatedPressable, ActiveText } from '@/components/ui/AnimatedView';
 
 interface ExtendedApplicant extends Applicant {
   opportunityTitle: string;
@@ -166,13 +166,13 @@ export default function AllApplicantsScreen() {
                       <Ionicons name="person" size={20} color={colors.primary} />
                     </View>
                     <View style={styles.studentInfo}>
-                      <Text style={styles.studentName}>Student Candidate</Text>
-                      <Text style={styles.studentId}>ID: {item.studentId.substring(0, 8)}...</Text>
+                      <ActiveText style={styles.studentName}>Student Candidate</ActiveText>
+                      <ActiveText style={styles.studentId}>ID: {item.studentId.substring(0, 8)}...</ActiveText>
                     </View>
                     <View style={[styles.statusBadge, item.active ? styles.statusActive : styles.statusClosed]}>
-                      <Text style={[styles.statusText, item.active ? styles.statusActiveText : styles.statusClosedText]}>
+                      <ActiveText style={[styles.statusText, item.active ? styles.statusActiveText : styles.statusClosedText]}>
                         {item.active ? 'Active Job' : 'Closed Job'}
-                      </Text>
+                      </ActiveText>
                     </View>
                   </View>
 
@@ -181,11 +181,11 @@ export default function AllApplicantsScreen() {
                   <View style={styles.cardBottomRow}>
                     <View style={styles.jobTag}>
                       <Ionicons name="briefcase-outline" size={14} color={colors.tertiary} />
-                      <Text style={styles.jobTitle} numberOfLines={1}>{item.opportunityTitle}</Text>
+                      <ActiveText style={styles.jobTitle} numberOfLines={1}>{item.opportunityTitle}</ActiveText>
                     </View>
                     <View style={styles.dateTag}>
                       <Ionicons name="time-outline" size={14} color={colors.onSurfaceVariant} />
-                      <Text style={styles.dateText}>{new Date(item.appliedAt).toLocaleDateString()}</Text>
+                      <ActiveText style={styles.dateText}>{new Date(item.appliedAt).toLocaleDateString()}</ActiveText>
                     </View>
                   </View>
                 </AnimatedPressable>
@@ -267,7 +267,7 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: `${colors.primary}15`,
+    backgroundColor: `${colors.secondary}15`,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -278,10 +278,10 @@ const styles = StyleSheet.create({
   statusBadge: {
     paddingHorizontal: spacing.sm,
     paddingVertical: 4,
-    borderRadius: radius.sm,
+    borderRadius: radius.full,
   },
-  statusActive: { backgroundColor: `${colors.secondary}15` },
-  statusClosed: { backgroundColor: `${colors.outline}15` },
+  statusActive: { backgroundColor: colors.successContainer, borderWidth: 1, borderColor: `${colors.secondary}35` },
+  statusClosed: { backgroundColor: colors.surfaceContainerLow, borderWidth: 1, borderColor: colors.outlineVariant },
   statusText: { ...typography.labelSm, fontSize: 11 },
   statusActiveText: { color: colors.secondary },
   statusClosedText: { color: colors.onSurfaceVariant },

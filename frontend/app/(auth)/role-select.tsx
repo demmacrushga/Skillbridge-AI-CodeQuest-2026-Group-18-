@@ -204,7 +204,7 @@ const styles = StyleSheet.create({
   },
   cardSelected: {
     borderColor: colors.secondary,
-    backgroundColor: '#F0FDF4',
+    backgroundColor: colors.successContainer,
   },
   cardTop: {
     flexDirection: 'row',

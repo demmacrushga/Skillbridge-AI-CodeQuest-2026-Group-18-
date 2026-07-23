@@ -19,13 +19,13 @@ import { colors, typography, spacing, radius } from '@/constants/theme';
 import { getRoadmap } from '@/services/career';
 import { type Milestone, type Roadmap } from '@/types/career';
 import { Skeleton } from '@/components/ui/Skeleton';
-import { AnimatedFadeIn, AnimatedPressable } from '@/components/ui/AnimatedView';
+import { AnimatedFadeIn, AnimatedPressable, ActiveText } from '@/components/ui/AnimatedView';
 
 const TYPE_CONFIG: Record<Milestone['type'], { icon: keyof typeof Ionicons.glyphMap; color: string; label: string }> = {
   SKILL: { icon: 'book-outline', color: colors.tertiary, label: 'Skill' },
   PROJECT: { icon: 'code-slash-outline', color: colors.secondary, label: 'Project' },
-  CERT: { icon: 'trophy-outline', color: '#B45309', label: 'Cert' },
-  EXPERIENCE: { icon: 'briefcase-outline', color: colors.onSurfaceVariant, label: 'Experience' },
+  CERT: { icon: 'trophy-outline', color: colors.primary, label: 'Cert' },
+  EXPERIENCE: { icon: 'briefcase-outline', color: colors.tertiary, label: 'Experience' },
 };
 
 function usePulse() {
@@ -66,7 +66,7 @@ function QuickLink({ icon, label, color, onPress, index }: QuickLinkProps) {
         <View style={[styles.quickLinkIcon, { backgroundColor: `${color}15` }]}>
           <Ionicons name={icon} size={22} color={color} />
         </View>
-        <Text style={styles.quickLinkLabel} numberOfLines={1}>{label}</Text>
+        <ActiveText style={styles.quickLinkLabel} numberOfLines={1}>{label}</ActiveText>
       </AnimatedPressable>
     </AnimatedFadeIn>
   );
@@ -82,16 +82,6 @@ export default function DashboardScreen() {
   const roleLabel = user?.role
     ? user.role.charAt(0) + user.role.slice(1).toLowerCase()
     : 'Student';
-
-  if (user?.role === 'RECRUITER') {
-    // @ts-ignore: expo-router typing bug for index routes
-    return <Redirect href="/(app)/recruiter" />;
-  }
-
-  if (user?.role === 'ALUMNI') {
-    // @ts-ignore: expo-router typing bug for index routes
-    return <Redirect href="/(app)/alumni" />;
-  }
 
   const [roadmap, setRoadmap] = useState<Roadmap | null>(null);
   const [loadingRoadmap, setLoadingRoadmap] = useState(true);
@@ -143,6 +133,16 @@ export default function DashboardScreen() {
     }).start();
   }, [progress]);
 
+  if (user?.role === 'RECRUITER') {
+    // @ts-ignore: expo-router typing bug for index routes
+    return <Redirect href="/(app)/recruiter" />;
+  }
+
+  if (user?.role === 'ALUMNI') {
+    // @ts-ignore: expo-router typing bug for index routes
+    return <Redirect href="/(app)/alumni" />;
+  }
+
   const animatedWidth = progressAnim.interpolate({
     inputRange: [0, 100],
     outputRange: ['0%', '100%'],
@@ -156,7 +156,6 @@ export default function DashboardScreen() {
           <View style={styles.headerLogoMark}>
             <Ionicons name="compass" size={20} color={colors.onPrimary} />
           </View>
-          <Text style={styles.headerBrandTitle}>SkillBridge</Text>
         </View>
         <TouchableOpacity
           style={styles.headerBtn}
@@ -281,17 +280,24 @@ export default function DashboardScreen() {
 
         {/* Hero progress card */}
         <AnimatedFadeIn delay={200} duration={450}>
-          <View style={styles.heroCard}>
+          <AnimatedPressable 
+            style={styles.heroCard} 
+            activeFillColor={colors.tertiary} 
+            onPress={() => router.push('./career')}
+          >
             {/* Top row */}
             <View style={styles.heroTop}>
               <View style={{ flex: 1 }}>
-                <Text style={styles.heroEyebrow}>CAREER READINESS</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Text style={styles.heroEyebrow}>CAREER READINESS</Text>
+                  <Ionicons name="chevron-forward-circle" size={14} color="rgba(255,255,255,0.7)" />
+                </View>
                 {loadingRoadmap ? (
                   <Skeleton width="60%" height={22} style={{ marginTop: spacing.xs }} />
                 ) : roadmap ? (
                   <Text style={styles.heroCareerPath} numberOfLines={1}>{roadmap.careerPath}</Text>
                 ) : (
-                  <Text style={styles.heroCareerPathMuted}>No roadmap yet</Text>
+                  <Text style={styles.heroCareerPathMuted}>No roadmap yet — Tap to create</Text>
                 )}
               </View>
               <View style={styles.heroScoreBadge}>
@@ -322,7 +328,7 @@ export default function DashboardScreen() {
                 <Text style={styles.heroStatLabel}>Remaining</Text>
               </View>
             </View>
-          </View>
+          </AnimatedPressable>
         </AnimatedFadeIn>
 
         {/* Up Next card */}
@@ -348,7 +354,7 @@ export default function DashboardScreen() {
               {remainingMilestones.map((milestone, idx) => {
                 const cfg = TYPE_CONFIG[milestone.type] ?? TYPE_CONFIG.SKILL;
                 return (
-                  <TouchableOpacity
+                  <AnimatedPressable
                     key={milestone.id}
                     style={[
                       styles.upNextCard,
@@ -358,47 +364,49 @@ export default function DashboardScreen() {
                       }
                     ]}
                     onPress={() => router.push('./career')}
-                    activeOpacity={0.82}
                   >
                     <View style={styles.upNextHeader}>
-                      <View style={styles.upNextLive}>
+                      <View style={styles.semesterBadge}>
                         {idx === 0 && <Animated.View style={[styles.upNextDot, { opacity: pulseOpacity }]} />}
-                        <Text style={styles.upNextEyebrow}>
+                        <ActiveText style={styles.semesterBadgeText}>
                           {idx === 0 ? 'UP NEXT · ' : 'UPCOMING · '}
                           {user?.role === 'ALUMNI' ? `PHASE ${milestone.semester}` : `SEMESTER ${milestone.semester}`}
-                        </Text>
+                        </ActiveText>
                       </View>
                       <Ionicons name="arrow-forward" size={16} color={colors.tertiary} />
                     </View>
 
-                    <Text style={styles.upNextTitle}>{milestone.title}</Text>
+                    <ActiveText style={styles.upNextTitle}>{milestone.title}</ActiveText>
                     {milestone.description ? (
-                      <Text style={styles.upNextDesc} numberOfLines={2}>{milestone.description}</Text>
+                      <ActiveText style={styles.upNextDesc} numberOfLines={2}>{milestone.description}</ActiveText>
                     ) : null}
 
                     <View style={styles.upNextFooter}>
                       <View style={[styles.upNextTypeBadge, { backgroundColor: `${cfg.color}15`, borderColor: `${cfg.color}35` }]}>
                         <Ionicons name={cfg.icon} size={11} color={cfg.color} />
-                        <Text style={[styles.upNextTypeText, { color: cfg.color }]}>{cfg.label}</Text>
+                        <ActiveText style={[styles.upNextTypeText, { color: cfg.color }]}>{cfg.label}</ActiveText>
                       </View>
-                      <Text style={styles.upNextCta}>Tap to open roadmap →</Text>
+                      <ActiveText style={styles.upNextCta}>Tap to open roadmap →</ActiveText>
                     </View>
-                  </TouchableOpacity>
+                  </AnimatedPressable>
                 );
               })}
             </ScrollView>
           </AnimatedFadeIn>
         ) : !roadmap ? (
-          <TouchableOpacity style={styles.noRoadmapCard} onPress={() => router.push('./career')} activeOpacity={0.82}>
+          <AnimatedPressable
+            style={styles.noRoadmapCard}
+            onPress={() => router.push('./career')}
+          >
             <View style={styles.noRoadmapIconWrap}>
               <Ionicons name="compass-outline" size={28} color={colors.tertiary} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.noRoadmapTitle}>Build your roadmap</Text>
-              <Text style={styles.noRoadmapSub}>Choose a career path to get your AI-powered plan</Text>
+              <ActiveText style={styles.noRoadmapTitle}>Build your roadmap</ActiveText>
+              <ActiveText style={styles.noRoadmapSub}>Choose a career path to get your AI-powered plan</ActiveText>
             </View>
             <Ionicons name="chevron-forward" size={18} color={colors.tertiary} />
-          </TouchableOpacity>
+          </AnimatedPressable>
         ) : (
           <View style={styles.allDoneCard}>
             <Ionicons name="trophy" size={24} color="#F59E0B" />
@@ -490,24 +498,24 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: '#ECFDF5',
+    backgroundColor: colors.successContainer,
     borderRadius: radius.full,
     paddingHorizontal: spacing.sm,
     paddingVertical: 6,
     borderWidth: 1,
-    borderColor: '#A7F3D0',
+    borderColor: `${colors.secondary}35`,
   },
   roleBadgeText: { ...typography.labelSm, color: colors.secondary },
 
   /* Hero card */
   heroCard: {
-    backgroundColor: '#000000',
+    backgroundColor: colors.secondary, // Royal Blue
     borderRadius: radius.xl,
     padding: spacing.md,
     marginBottom: spacing.xs,
     borderWidth: 1,
-    borderColor: '#262626',
-    shadowColor: '#000',
+    borderColor: `${colors.secondary}90`,
+    shadowColor: colors.secondary,
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.35,
     shadowRadius: 12,
@@ -526,13 +534,13 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xs,
   },
   heroCareerPath: {
-    fontFamily: 'PlusJakartaSans_700Bold',
+    ...typography.headlineSm,
     fontSize: 22,
     lineHeight: 28,
     color: colors.onPrimary,
   },
   heroCareerPathMuted: {
-    fontFamily: 'PlusJakartaSans_600SemiBold',
+    ...typography.headlineSm,
     fontSize: 18,
     lineHeight: 24,
     color: 'rgba(255,255,255,0.4)',
@@ -540,7 +548,7 @@ const styles = StyleSheet.create({
   heroScoreBadge: {
     flexDirection: 'row',
     alignItems: 'flex-end',
-    backgroundColor: colors.secondary,
+    backgroundColor: 'rgba(255,255,255,0.15)',
     borderRadius: radius.lg,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
@@ -548,7 +556,7 @@ const styles = StyleSheet.create({
     flexShrink: 0,
   },
   heroScoreNum: {
-    fontFamily: 'PlusJakartaSans_700Bold',
+    ...typography.headlineLg,
     fontSize: 28,
     lineHeight: 32,
     color: colors.onPrimary,
@@ -561,21 +569,23 @@ const styles = StyleSheet.create({
   },
   heroProgressTrack: {
     height: 8,
-    backgroundColor: '#262626',
+    backgroundColor: 'rgba(255,255,255,0.2)',
     borderRadius: radius.full,
     overflow: 'hidden',
     marginBottom: spacing.lg,
   },
   heroProgressFill: {
     height: '100%',
-    backgroundColor: colors.secondary,
+    backgroundColor: colors.onPrimary,
     borderRadius: radius.full,
   },
   heroStats: {
     flexDirection: 'row',
-    backgroundColor: '#171717',
+    backgroundColor: 'rgba(0,0,0,0.15)',
     borderRadius: radius.lg,
-    paddingVertical: spacing.md,
+    padding: spacing.md,
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   heroStat: { flex: 1, alignItems: 'center', gap: 3 },
   heroStatDivider: { width: 1, backgroundColor: 'rgba(255,255,255,0.12)' },
@@ -594,10 +604,10 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     marginBottom: spacing.xs,
     borderWidth: 1.5,
-    borderColor: `${colors.tertiary}40`,
+    borderColor: `${colors.tertiary}30`,
     shadowColor: colors.tertiary,
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.08,
     shadowRadius: 12,
     elevation: 3,
   },
@@ -607,12 +617,29 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: spacing.sm,
   },
+  semesterBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: colors.tertiaryContainer,
+    borderWidth: 1,
+    borderColor: `${colors.tertiary}30`,
+    borderRadius: radius.full,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
   upNextLive: { flexDirection: 'row', alignItems: 'center', gap: 7 },
   upNextDot: {
     width: 8,
     height: 8,
     borderRadius: radius.full,
     backgroundColor: colors.tertiary,
+  },
+  semesterBadgeText: {
+    ...typography.labelSm,
+    color: colors.tertiary,
+    letterSpacing: 0.8,
+    fontSize: 10,
   },
   upNextEyebrow: {
     ...typography.labelSm,

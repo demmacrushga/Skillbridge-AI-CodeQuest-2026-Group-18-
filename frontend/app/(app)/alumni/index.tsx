@@ -19,7 +19,7 @@ import { useAuth } from '@/context/AuthContext';
 import { colors, typography, spacing, radius } from '@/constants/theme';
 import { getMyProfile, getIncomingRequests, getMyPairs, upsertProfile } from '@/services/mentorship';
 import { type AlumniProfile, type MentorshipRequest, type MentorshipPair } from '@/types/mentorship';
-import { AnimatedFadeIn, AnimatedPressable } from '@/components/ui/AnimatedView';
+import { AnimatedFadeIn, AnimatedPressable, ActiveText } from '@/components/ui/AnimatedView';
 
 export default function AlumniDashboardScreen() {
   const { state } = useAuth();
@@ -123,7 +123,6 @@ export default function AlumniDashboardScreen() {
           <View style={styles.headerLogoMark}>
             <Ionicons name="compass" size={20} color={colors.onPrimary} />
           </View>
-          <Text style={styles.headerBrandTitle}>SkillBridge</Text>
         </View>
         <TouchableOpacity
           style={styles.headerBtn}
@@ -167,8 +166,8 @@ export default function AlumniDashboardScreen() {
                   <View style={[styles.statIconWrap, { backgroundColor: `${colors.secondary}15` }]}>
                     <Ionicons name="people" size={24} color={colors.secondary} />
                   </View>
-                  <Text style={styles.statValue}>{activeMenteesCount}</Text>
-                  <Text style={styles.statLabel}>Active Mentees</Text>
+                  <ActiveText style={styles.statValue}>{activeMenteesCount}</ActiveText>
+                  <ActiveText style={styles.statLabel}>Active Mentees</ActiveText>
                 </AnimatedPressable>
 
                 <AnimatedPressable
@@ -178,8 +177,8 @@ export default function AlumniDashboardScreen() {
                   <View style={[styles.statIconWrap, { backgroundColor: `${colors.tertiary}15` }]}>
                     <Ionicons name="mail-unread" size={24} color={colors.tertiary} />
                   </View>
-                  <Text style={styles.statValue}>{pendingCount}</Text>
-                  <Text style={styles.statLabel}>Pending Requests</Text>
+                  <ActiveText style={styles.statValue}>{pendingCount}</ActiveText>
+                  <ActiveText style={styles.statLabel}>Pending Requests</ActiveText>
                 </AnimatedPressable>
 
                 <AnimatedPressable
@@ -189,10 +188,10 @@ export default function AlumniDashboardScreen() {
                   <View style={[styles.statIconWrap, { backgroundColor: `${colors.primary}15` }]}>
                     <Ionicons name={profile?.available ? "checkmark-circle" : "pause-circle"} size={24} color={colors.primary} />
                   </View>
-                  <Text style={[styles.statValue, { fontSize: 16, marginTop: 4 }]}>
+                  <ActiveText style={[styles.statValue, { fontSize: 16, marginTop: 4 }]}>
                     {profile?.available ? 'Accepting' : 'Paused'}
-                  </Text>
-                  <Text style={styles.statLabel}>Availability</Text>
+                  </ActiveText>
+                  <ActiveText style={styles.statLabel}>Availability</ActiveText>
                 </AnimatedPressable>
               </View>
             </AnimatedFadeIn>
@@ -205,10 +204,10 @@ export default function AlumniDashboardScreen() {
                     <Ionicons name="easel" size={24} color={colors.secondary} />
                   </View>
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.profileCardTitle}>Teaching & Mentor Specs</Text>
-                    <Text style={styles.profileCardSub}>
+                    <ActiveText style={styles.profileCardTitle}>Teaching & Mentor Specs</ActiveText>
+                    <ActiveText style={styles.profileCardSub}>
                       {profile?.currentRole ? `${profile.currentRole} at ${profile.company || 'Company'}` : 'Configure your teaching expertise & industry'}
-                    </Text>
+                    </ActiveText>
                   </View>
                   <TouchableOpacity style={styles.editBtn} onPress={() => setShowEditModal(true)}>
                     <Ionicons name="create-outline" size={18} color={colors.primary} />
@@ -243,8 +242,8 @@ export default function AlumniDashboardScreen() {
                   <View style={[styles.actionIconWrap, { backgroundColor: `${colors.secondary}20` }]}>
                     <Ionicons name="checkmark-done-circle" size={28} color={colors.secondary} />
                   </View>
-                  <Text style={styles.actionCardTitle}>Manage Requests</Text>
-                  <Text style={styles.actionCardDesc}>Accept or decline student mentorships</Text>
+                  <ActiveText style={styles.actionCardTitle}>Manage Requests</ActiveText>
+                  <ActiveText style={styles.actionCardDesc}>Accept or decline student mentorships</ActiveText>
                 </AnimatedPressable>
 
                 <AnimatedPressable
@@ -254,8 +253,8 @@ export default function AlumniDashboardScreen() {
                   <View style={[styles.actionIconWrap, { backgroundColor: `${colors.primary}20` }]}>
                     <Ionicons name="options" size={28} color={colors.primary} />
                   </View>
-                  <Text style={styles.actionCardTitle}>Update Availability</Text>
-                  <Text style={styles.actionCardDesc}>Set mentee topics & industry specs</Text>
+                  <ActiveText style={styles.actionCardTitle}>Update Availability</ActiveText>
+                  <ActiveText style={styles.actionCardDesc}>Set mentee topics & industry specs</ActiveText>
                 </AnimatedPressable>
 
                 <AnimatedPressable
@@ -265,8 +264,8 @@ export default function AlumniDashboardScreen() {
                   <View style={[styles.actionIconWrap, { backgroundColor: `${colors.tertiary}20` }]}>
                     <Ionicons name="map" size={28} color={colors.tertiary} />
                   </View>
-                  <Text style={styles.actionCardTitle}>AI Career Roadmap</Text>
-                  <Text style={styles.actionCardDesc}>Personalised progression milestones</Text>
+                  <ActiveText style={styles.actionCardTitle}>AI Career Roadmap</ActiveText>
+                  <ActiveText style={styles.actionCardDesc}>Personalised progression milestones</ActiveText>
                 </AnimatedPressable>
 
                 <AnimatedPressable
@@ -276,8 +275,8 @@ export default function AlumniDashboardScreen() {
                   <View style={[styles.actionIconWrap, { backgroundColor: `${colors.secondary}20` }]}>
                     <Ionicons name="person-circle" size={28} color={colors.secondary} />
                   </View>
-                  <Text style={styles.actionCardTitle}>Educator Profile</Text>
-                  <Text style={styles.actionCardDesc}>Manage account and support</Text>
+                  <ActiveText style={styles.actionCardTitle}>Educator Profile</ActiveText>
+                  <ActiveText style={styles.actionCardDesc}>Manage account and support</ActiveText>
                 </AnimatedPressable>
               </ScrollView>
             </AnimatedFadeIn>
@@ -383,46 +382,50 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
     backgroundColor: colors.surface,
   },
   headerLeft: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   headerLogoMark: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
+    width: 36,
+    height: 36,
+    borderRadius: radius.md,
     backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  headerBrandTitle: { ...typography.headlineSm, color: colors.onSurface },
+  headerBrandTitle: { ...typography.headlineSm, color: colors.primary, fontSize: 20 },
   headerBtn: {
     width: 40,
     height: 40,
-    borderRadius: 20,
+    borderRadius: radius.full,
     backgroundColor: colors.surfaceContainerLow,
+    borderWidth: 1,
+    borderColor: colors.outlineVariant,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  scrollContent: { padding: spacing.md, paddingBottom: spacing.xxl },
+  scrollContent: { padding: spacing.lg, paddingBottom: spacing.xxl + 80 },
 
-  greetingRow: { flexDirection: 'row', alignItems: 'center', marginBottom: spacing.xl },
-  greetingHello: { fontFamily: 'Inter_500Medium', fontSize: 15, color: colors.onSurfaceVariant },
-  greetingName: { ...typography.headlineLg, color: colors.onSurface, marginTop: 2, fontSize: 32 },
+  greetingRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.lg },
+  greetingHello: { ...typography.bodyMd, color: colors.onSurfaceVariant },
+  greetingName: { ...typography.headlineMd, color: colors.primary, marginTop: 2 },
   roleBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: `${colors.secondary}15`,
+    backgroundColor: colors.successContainer,
     paddingHorizontal: spacing.sm,
-    paddingVertical: 4,
+    paddingVertical: 6,
     borderRadius: radius.full,
+    borderWidth: 1,
+    borderColor: `${colors.secondary}35`,
     gap: 4,
   },
   roleBadgeText: { ...typography.labelSm, color: colors.secondary },
 
-  sectionTitle: { ...typography.headlineSm, color: colors.onSurface, marginBottom: spacing.md },
-  
+  sectionTitle: { ...typography.headlineSm, color: colors.primary, marginBottom: spacing.md },
+
   statsGrid: { flexDirection: 'row', gap: spacing.md, marginBottom: spacing.xl },
   statCard: {
     flex: 1,

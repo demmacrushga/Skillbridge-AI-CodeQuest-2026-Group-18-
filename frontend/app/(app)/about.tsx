@@ -97,7 +97,7 @@ export default function AboutScreen() {
           <Text style={styles.sectionTitle}>Built for Excellence</Text>
           <View style={styles.infoBox}>
             <Text style={styles.infoBoxText}>
-              Developed for Group 18 SkillBridge AI CodeQuest 2026. Built with modern microservices architecture and Expo React Native.
+              Developed by Group 18 for CodeQuest 2026. Built with modern microservices architecture and Expo React Native.
             </Text>
           </View>
 
@@ -127,7 +127,7 @@ const styles = StyleSheet.create({
   },
   backBtn: { padding: spacing.xs },
   headerTitle: { ...typography.headlineSm, color: colors.onSurface, marginLeft: spacing.xs },
-  
+
   scrollContent: { padding: spacing.md, paddingBottom: spacing.xxl },
 
   /* Emerald Green Hero Card */
@@ -157,7 +157,7 @@ const styles = StyleSheet.create({
   brandDesc: { ...typography.bodyMd, color: `${colors.onPrimary}95`, textAlign: 'center', lineHeight: 22 },
 
   sectionTitle: { ...typography.headlineSm, fontSize: 18, color: colors.onSurface, marginBottom: spacing.md },
-  
+
   featuresCard: {
     backgroundColor: colors.surfaceCard,
     borderRadius: radius.xl,

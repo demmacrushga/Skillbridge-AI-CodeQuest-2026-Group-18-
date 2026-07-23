@@ -100,7 +100,6 @@ export default function LoginScreen() {
               <View style={styles.logoMark}>
                 <Ionicons name="compass" size={22} color={colors.onPrimary} />
               </View>
-              <Text style={styles.brandName}>SkillBridge</Text>
             </View>
           </AnimatedFadeIn>
 

@@ -19,15 +19,15 @@ import { colors, typography, spacing, radius } from '@/constants/theme';
 import { getCareerPaths, generateRoadmap, getRoadmap, completeMilestone } from '@/services/career';
 import { type CareerPath, type Milestone, type Roadmap } from '@/types/career';
 import { type UserRole } from '@/services/auth';
-import { AnimatedFadeIn } from '@/components/ui/AnimatedView';
+import { AnimatedFadeIn, AnimatedPressable, ActiveText } from '@/components/ui/AnimatedView';
 
 // ─── Roadmap type config ──────────────────────────────────────────────────────
 
 const TYPE_CONFIG: Record<Milestone['type'], { icon: keyof typeof Ionicons.glyphMap; color: string; label: string }> = {
   SKILL: { icon: 'book-outline', color: colors.tertiary, label: 'Skill' },
   PROJECT: { icon: 'code-slash-outline', color: colors.secondary, label: 'Project' },
-  CERT: { icon: 'trophy-outline', color: '#B45309', label: 'Cert' },
-  EXPERIENCE: { icon: 'briefcase-outline', color: colors.onSurfaceVariant, label: 'Exp' },
+  CERT: { icon: 'trophy-outline', color: colors.primary, label: 'Cert' },
+  EXPERIENCE: { icon: 'briefcase-outline', color: colors.tertiary, label: 'Exp' },
 };
 
 // ─── Career path picker config ────────────────────────────────────────────────
@@ -651,34 +651,34 @@ export default function CareerScreen() {
                         const meta = getPathMeta(path.name);
                         const isSelected = selectedPath?.id === path.id;
                         return (
-                          <TouchableOpacity
+                          <AnimatedPressable
                             key={path.id}
-                            style={[styles.pathCard, isSelected && { backgroundColor: meta.color, borderColor: meta.color }]}
+                            style={styles.pathCard}
+                            isActive={isSelected}
                             onPress={() => {
                               setSelectedPath(isSelected ? null : path);
                               if (!isSelected) {
                                 setTimeout(() => setWizardStep(2), 250);
                               }
                             }}
-                            activeOpacity={0.8}
                           >
                             <View style={[styles.pathIconWrap, { backgroundColor: isSelected ? 'rgba(255,255,255,0.2)' : `${meta.color}15` }]}>
                               <Ionicons name={meta.icon} size={26} color={isSelected ? colors.onPrimary : meta.color} />
                             </View>
-                            <Text style={[styles.pathName, isSelected && styles.pathNameSelected]} numberOfLines={2}>
+                            <ActiveText style={styles.pathName} numberOfLines={2}>
                               {path.name}
-                            </Text>
+                            </ActiveText>
                             <View style={[styles.demandPill, isSelected ? { backgroundColor: 'rgba(255,255,255,0.2)' } : { backgroundColor: `${meta.color}12` }]}>
-                              <Text style={[styles.demandText, { color: isSelected ? colors.onPrimary : meta.color }]}>
+                              <ActiveText style={[styles.demandText, { color: isSelected ? colors.onPrimary : meta.color }]}>
                                 {meta.demand}
-                              </Text>
+                              </ActiveText>
                             </View>
                             {isSelected && (
                               <View style={styles.pathCheckmark}>
                                 <Ionicons name="checkmark-circle" size={18} color={colors.onPrimary} />
                               </View>
                             )}
-                          </TouchableOpacity>
+                          </AnimatedPressable>
                         );
                       })}
                       {row.length === 1 && <View style={styles.pathCardPlaceholder} />}
@@ -831,37 +831,57 @@ export default function CareerScreen() {
         </View>
       </View>
 
-      <View style={styles.tabBarWrap}>
+      {/* Fitts's Law-Compliant Spacious Semester & Year Selection Cards */}
+      <View style={styles.semesterCardsWrap}>
+        <Text style={styles.sectionEyebrow}>SELECT SEMESTER / YEAR</Text>
         <ScrollView
           ref={tabScrollRef}
           horizontal
           showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.tabBarContent}
+          contentContainerStyle={{ gap: spacing.sm, paddingHorizontal: spacing.md }}
         >
           {semesters.map(sem => {
             const semMs = grouped[sem] ?? [];
             const semDoneCount = semMs.filter(m => m.completed).length;
-            const allDone = semDoneCount === semMs.length;
+            const allDone = semDoneCount === semMs.length && semMs.length > 0;
             const hasNext = semMs.some(m => m.id === firstIncompleteId);
             const isSelected = sem === selectedSemester;
             return (
-              <TouchableOpacity
+              <AnimatedPressable
                 key={sem}
-                style={[styles.tab, isSelected && styles.tabSelected, allDone && !isSelected && styles.tabDone]}
+                style={[
+                  styles.spaciousSemesterCard,
+                  allDone && !isSelected && styles.spaciousSemesterCardDone
+                ]}
+                isActive={isSelected}
                 onPress={() => setSelectedSemester(sem)}
-                activeOpacity={0.75}
               >
-                {allDone
-                  ? <Ionicons name="checkmark-circle" size={12} color={isSelected ? colors.onPrimary : colors.secondary} />
-                  : hasNext && !isSelected ? <View style={styles.tabActiveDot} /> : null
-                }
-                <Text style={[styles.tabText, isSelected && styles.tabTextSelected, allDone && !isSelected && styles.tabTextDone]}>
-                  {periodShort(role, sem)}
-                </Text>
-                <Text style={[styles.tabCount, isSelected && styles.tabCountSelected]}>
-                  {semDoneCount}/{semMs.length}
-                </Text>
-              </TouchableOpacity>
+                <View style={styles.spaciousSemTop}>
+                  <ActiveText style={styles.spaciousSemYearLabel}>
+                    {periodShort(role, sem)}
+                  </ActiveText>
+                  {allDone ? (
+                    <Ionicons name="checkmark-circle" size={16} color={isSelected ? colors.onPrimary : colors.secondary} />
+                  ) : hasNext && !isSelected ? (
+                    <View style={styles.tabActiveDot} />
+                  ) : null}
+                </View>
+
+                <View>
+                  <ActiveText style={styles.spaciousSemProgressText}>
+                    {semDoneCount}/{semMs.length} Milestones
+                  </ActiveText>
+                  <View style={[styles.semMiniBarTrack, isSelected && { backgroundColor: 'rgba(255,255,255,0.25)' }]}>
+                    <View
+                      style={[
+                        styles.semMiniBarFill,
+                        isSelected && { backgroundColor: colors.onPrimary },
+                        { width: semMs.length > 0 ? `${(semDoneCount / semMs.length) * 100}%` : '0%' }
+                      ]}
+                    />
+                  </View>
+                </View>
+              </AnimatedPressable>
             );
           })}
         </ScrollView>
@@ -1091,19 +1111,86 @@ const styles = StyleSheet.create({
   changePathBtn: { width: 38, height: 38, borderRadius: radius.full, backgroundColor: colors.surfaceContainerLow, justifyContent: 'center', alignItems: 'center', flexShrink: 0 },
 
   /* Progress strip */
-  progressStrip: { backgroundColor: '#000000', paddingHorizontal: spacing.lg, paddingTop: spacing.sm + 2, paddingBottom: spacing.md },
+  progressStrip: { backgroundColor: colors.secondary, paddingHorizontal: spacing.lg, paddingTop: spacing.sm + 2, paddingBottom: spacing.md, borderBottomLeftRadius: radius.xl, borderBottomRightRadius: radius.xl, shadowColor: colors.secondary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8, elevation: 3 },
   progressStripRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.sm },
   progressStripLabel: { ...typography.labelSm, color: 'rgba(255,255,255,0.85)' },
   progressStripPct: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 15, color: colors.onPrimary },
-  progressTrack: { height: 8, backgroundColor: '#262626', borderRadius: radius.full, overflow: 'hidden' },
-  progressFill: { height: '100%', backgroundColor: colors.secondary, borderRadius: radius.full },
+  progressTrack: { height: 8, backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: radius.full, overflow: 'hidden' },
+  progressFill: { height: '100%', backgroundColor: colors.onPrimary, borderRadius: radius.full },
+
+  /* Semester cards — Fitts's Law compliant */
+  semesterCardsWrap: {
+    paddingVertical: spacing.md,
+    backgroundColor: colors.surfaceCard,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.outlineVariant,
+  },
+  sectionEyebrow: {
+    ...typography.labelSm,
+    fontSize: 10,
+    color: colors.onSurfaceVariant,
+    letterSpacing: 0.8,
+    marginBottom: spacing.xs,
+    paddingHorizontal: spacing.md,
+  },
+  spaciousSemesterCard: {
+    width: 155,
+    minHeight: 74,
+    backgroundColor: colors.surfaceContainerLow,
+    borderRadius: radius.lg,
+    padding: spacing.sm + 4,
+    borderWidth: 1.5,
+    borderColor: colors.outlineVariant,
+    justifyContent: 'space-between',
+  },
+  spaciousSemesterCardSelected: {
+    backgroundColor: colors.secondary,
+    borderColor: colors.secondary,
+    shadowColor: colors.secondary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  spaciousSemesterCardDone: {
+    backgroundColor: colors.successContainer,
+    borderColor: `${colors.secondary}35`,
+  },
+  spaciousSemTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  spaciousSemYearLabel: {
+    ...typography.labelSm,
+    fontSize: 13,
+    color: colors.onSurface,
+    fontFamily: 'PlusJakartaSans_600SemiBold',
+  },
+  spaciousSemProgressText: {
+    ...typography.labelSm,
+    fontSize: 10,
+    color: colors.onSurfaceVariant,
+    marginBottom: 4,
+  },
+  semMiniBarTrack: {
+    height: 4,
+    backgroundColor: colors.surfaceContainerHigh,
+    borderRadius: radius.full,
+    overflow: 'hidden',
+  },
+  semMiniBarFill: {
+    height: '100%',
+    backgroundColor: colors.secondary,
+    borderRadius: radius.full,
+  },
 
   /* Semester tabs */
   tabBarWrap: { backgroundColor: colors.surfaceCard, borderBottomWidth: 1, borderBottomColor: colors.outlineVariant },
   tabBarContent: { paddingHorizontal: spacing.md, paddingVertical: spacing.sm, gap: spacing.xs, flexDirection: 'row' },
   tab: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 6, borderRadius: radius.full, backgroundColor: colors.surfaceContainerLow, borderWidth: 1, borderColor: colors.outlineVariant },
   tabSelected: { backgroundColor: colors.primary, borderColor: colors.primary },
-  tabDone: { backgroundColor: '#ECFDF5', borderColor: '#A7F3D0' },
+  tabDone: { backgroundColor: colors.successContainer, borderColor: `${colors.secondary}35` },
   tabActiveDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.tertiary },
   tabText: { ...typography.labelSm, color: colors.onSurfaceVariant, fontSize: 12 },
   tabTextSelected: { color: colors.onPrimary },
@@ -1115,7 +1202,7 @@ const styles = StyleSheet.create({
   semHeading: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.sm },
   semTitle: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 20, color: colors.primary },
   semPill: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: colors.surfaceContainerLow, borderRadius: radius.full, paddingHorizontal: 10, paddingVertical: 4, borderWidth: 1, borderColor: colors.outlineVariant },
-  semPillDone: { backgroundColor: '#ECFDF5', borderColor: '#A7F3D0' },
+  semPillDone: { backgroundColor: colors.successContainer, borderColor: `${colors.secondary}35` },
   semPillText: { ...typography.labelSm, color: colors.onSurfaceVariant, fontSize: 11 },
   semPillTextDone: { color: colors.secondary },
 

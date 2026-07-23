@@ -122,7 +122,7 @@ export default function RegisterScreen() {
           <AnimatedFadeIn delay={200} duration={400}>
             <View style={styles.header}>
               <Text style={styles.title}>Create Account</Text>
-              <Text style={styles.subtitle}>Join SkillBridge to connect with AI career paths</Text>
+              <Text style={styles.subtitle}>Connect with AI career paths and verified projects</Text>
             </View>
           </AnimatedFadeIn>
 
@@ -426,8 +426,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.xs + 2,
-    backgroundColor: '#ECFDF5',
-    borderColor: '#A7F3D0',
+    backgroundColor: colors.successContainer,
+    borderColor: `${colors.secondary}35`,
     borderWidth: 1,
     borderRadius: radius.md,
     paddingHorizontal: spacing.md,

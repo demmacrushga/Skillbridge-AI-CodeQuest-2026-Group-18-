@@ -14,7 +14,7 @@ import { useFocusEffect, router } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { showToast } from '@/components/ui/Toast';
-import { AnimatedPressable } from '@/components/ui/AnimatedView';
+import { AnimatedPressable, ActiveText } from '@/components/ui/AnimatedView';
 import { useAuth } from '@/context/AuthContext';
 import { colors, typography, spacing, radius } from '@/constants/theme';
 import {
@@ -238,14 +238,14 @@ export default function NotificationsScreen() {
         </View>
         <View style={styles.cardBody}>
           <View style={styles.cardHeader}>
-            <Text style={styles.cardType}>{TYPE_LABELS[item.type]}</Text>
+            <ActiveText style={styles.cardType}>{TYPE_LABELS[item.type]}</ActiveText>
             {!item.read && <View style={styles.unreadDot} />}
           </View>
-          <Text style={styles.cardTitle}>{item.title}</Text>
-          <Text style={styles.cardBodyText} numberOfLines={2}>
+          <ActiveText style={styles.cardTitle}>{item.title}</ActiveText>
+          <ActiveText style={styles.cardBodyText} numberOfLines={2}>
             {item.body}
-          </Text>
-          <Text style={styles.cardTime}>{new Date(item.createdAt).toLocaleString()}</Text>
+          </ActiveText>
+          <ActiveText style={styles.cardTime}>{new Date(item.createdAt).toLocaleString()}</ActiveText>
         </View>
       </AnimatedPressable>
     );

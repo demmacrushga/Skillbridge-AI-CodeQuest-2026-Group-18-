@@ -17,11 +17,11 @@ import { type PortfolioItem } from '@/types/portfolio';
 import { AnimatedFadeIn } from '@/components/ui/AnimatedView';
 
 const ITEM_TYPE_CONFIG: Record<string, { icon: keyof typeof Ionicons.glyphMap; color: string; bg: string }> = {
-  PROJECT: { icon: 'code-slash-outline', color: colors.primary, bg: `${colors.primary}1A` },
-  CERTIFICATION: { icon: 'ribbon-outline', color: '#B45309', bg: '#FEF3C7' },
-  PUBLICATION: { icon: 'document-text-outline', color: colors.tertiary, bg: `${colors.tertiary}1A` },
-  AWARD: { icon: 'trophy-outline', color: '#F59E0B', bg: '#FEF3C7' },
-  OTHER: { icon: 'briefcase-outline', color: colors.secondary, bg: `${colors.secondary}1A` },
+  PROJECT: { icon: 'code-slash-outline', color: colors.secondary, bg: `${colors.secondary}15` },
+  CERTIFICATION: { icon: 'ribbon-outline', color: colors.primary, bg: `${colors.primary}15` },
+  PUBLICATION: { icon: 'document-text-outline', color: colors.tertiary, bg: `${colors.tertiary}15` },
+  AWARD: { icon: 'trophy-outline', color: colors.secondary, bg: `${colors.secondary}15` },
+  OTHER: { icon: 'briefcase-outline', color: colors.primary, bg: `${colors.primary}15` },
 };
 
 function CVItemCard({ item, index }: { item: PortfolioItem; index: number }) {

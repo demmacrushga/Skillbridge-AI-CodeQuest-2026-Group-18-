@@ -20,6 +20,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { useAuth } from '@/context/AuthContext';
 import { colors, typography, spacing, radius } from '@/constants/theme';
+import { AnimatedFadeIn, AnimatedPressable, ActiveText } from '@/components/ui/AnimatedView';
 import {
   createPortfolioItem,
   deletePortfolioItem,
@@ -46,11 +47,11 @@ const STATUS_LABEL: Record<string, string> = {
 };
 
 const ITEM_TYPE_CONFIG: Record<string, { icon: keyof typeof Ionicons.glyphMap; color: string; bg: string }> = {
-  PROJECT: { icon: 'code-slash-outline', color: colors.primary, bg: `${colors.primary}1A` },
-  CERTIFICATION: { icon: 'ribbon-outline', color: '#B45309', bg: '#FEF3C7' },
-  PUBLICATION: { icon: 'document-text-outline', color: colors.tertiary, bg: `${colors.tertiary}1A` },
-  AWARD: { icon: 'trophy-outline', color: '#F59E0B', bg: '#FEF3C7' },
-  OTHER: { icon: 'briefcase-outline', color: colors.secondary, bg: `${colors.secondary}1A` },
+  PROJECT: { icon: 'code-slash-outline', color: colors.secondary, bg: `${colors.secondary}15` },
+  CERTIFICATION: { icon: 'ribbon-outline', color: colors.primary, bg: `${colors.primary}15` },
+  PUBLICATION: { icon: 'document-text-outline', color: colors.tertiary, bg: `${colors.tertiary}15` },
+  AWARD: { icon: 'trophy-outline', color: colors.secondary, bg: `${colors.secondary}15` },
+  OTHER: { icon: 'briefcase-outline', color: colors.primary, bg: `${colors.primary}15` },
 };
 
 function ItemCard({
@@ -78,16 +79,15 @@ function ItemCard({
         <Ionicons name={typeCfg.icon} size={20} color={typeCfg.color} />
       </View>
       
-      <TouchableOpacity 
+      <AnimatedPressable 
         style={[styles.card, expanded && styles.cardExpanded]} 
         onPress={() => setExpanded(!expanded)}
-        activeOpacity={0.9}
       >
         <View style={styles.cardHeader}>
           <View style={styles.cardMeta}>
             <View style={[styles.statusBadge, { backgroundColor: statusColor + '1A' }]}>
               <View style={[styles.statusDot, { backgroundColor: statusColor }]} />
-              <Text style={[styles.statusText, { color: statusColor }]}>{statusLabel}</Text>
+              <ActiveText style={[styles.statusText, { color: statusColor }]}>{statusLabel}</ActiveText>
             </View>
           </View>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
@@ -111,10 +111,10 @@ function ItemCard({
           </View>
         </View>
 
-        <Text style={styles.cardTitle} numberOfLines={expanded ? undefined : 2}>{item.title}</Text>
+        <ActiveText style={styles.cardTitle} numberOfLines={expanded ? undefined : 2}>{item.title}</ActiveText>
         
         {item.description ? (
-          <Text style={styles.cardDescription} numberOfLines={expanded ? undefined : 2}>{item.description}</Text>
+          <ActiveText style={styles.cardDescription} numberOfLines={expanded ? undefined : 2}>{item.description}</ActiveText>
         ) : null}
         
         {expanded && item.externalUrl ? (
@@ -157,7 +157,7 @@ function ItemCard({
             </TouchableOpacity>
           </View>
         )}
-      </TouchableOpacity>
+      </AnimatedPressable>
     </View>
   );
 }
@@ -529,6 +529,8 @@ function AiCvScannerModal({
 export default function PortfolioScreen() {
   const { state } = useAuth();
   const [items, setItems] = useState<PortfolioItem[]>([]);
+  const [activeFilter, setActiveFilter] = useState<'ALL' | 'PROJECT' | 'CERTIFICATION' | 'APPROVED' | 'PENDING'>('ALL');
+  const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [showModal, setShowModal] = useState(false);
@@ -684,6 +686,52 @@ export default function PortfolioScreen() {
         </View>
       </View>
 
+      {/* Interactive Search Bar & Status Filter Bar */}
+      {items.length > 0 && (
+        <View style={{ paddingHorizontal: spacing.md, paddingTop: spacing.xs, gap: spacing.xs, marginBottom: spacing.xs }}>
+          <View style={styles.searchWrap}>
+            <Ionicons name="search-outline" size={18} color={colors.onSurfaceVariant} />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search portfolio items..."
+              placeholderTextColor={colors.outline}
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+            />
+            {searchQuery ? (
+              <TouchableOpacity onPress={() => setSearchQuery('')}>
+                <Ionicons name="close-circle" size={18} color={colors.outline} />
+              </TouchableOpacity>
+            ) : null}
+          </View>
+
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: spacing.xs }}>
+            {[
+              { id: 'ALL', label: `All (${items.length})`, icon: 'apps-outline' },
+              { id: 'PROJECT', label: `Projects (${items.filter(i => i.itemType === 'PROJECT').length})`, icon: 'code-slash-outline' },
+              { id: 'CERTIFICATION', label: `Certs (${items.filter(i => i.itemType === 'CERTIFICATION').length})`, icon: 'ribbon-outline' },
+              { id: 'APPROVED', label: `Verified (${items.filter(i => i.verificationStatus === 'APPROVED').length})`, icon: 'checkmark-circle-outline' },
+              { id: 'PENDING', label: `Pending (${items.filter(i => i.verificationStatus === 'PENDING').length})`, icon: 'time-outline' },
+            ].map(tab => {
+              const isSelected = activeFilter === tab.id;
+              return (
+                <AnimatedPressable
+                  key={tab.id}
+                  style={[
+                    styles.filterPill,
+                    isSelected && { backgroundColor: colors.secondary, borderColor: colors.secondary }
+                  ]}
+                  onPress={() => setActiveFilter(tab.id as any)}
+                >
+                  <Ionicons name={tab.icon as any} size={13} color={isSelected ? colors.onPrimary : colors.onSurfaceVariant} />
+                  <Text style={[styles.filterPillText, isSelected && { color: colors.onPrimary }]}>{tab.label}</Text>
+                </AnimatedPressable>
+              );
+            })}
+          </ScrollView>
+        </View>
+      )}
+
       {loading ? (
         <ScrollView contentContainerStyle={styles.list}>
           <View style={{ marginBottom: spacing.md }}>
@@ -729,34 +777,48 @@ export default function PortfolioScreen() {
               </View>
 
               <View style={styles.emptyCardsRow}>
-                <TouchableOpacity style={styles.emptyActionCard} onPress={() => setShowAiScanModal(true)} activeOpacity={0.8}>
+                <AnimatedPressable style={styles.emptyActionCard} onPress={() => setShowAiScanModal(true)}>
                   <View style={[styles.emptyActionIcon, { backgroundColor: `${colors.secondary}15` }]}>
                     <Ionicons name="sparkles" size={24} color={colors.secondary} />
                   </View>
-                  <Text style={styles.emptyActionTitle}>Scan CV with AI</Text>
-                  <Text style={styles.emptyActionDesc}>Upload your CV or paste resume text to automatically extract and structure your portfolio points.</Text>
-                </TouchableOpacity>
+                  <ActiveText style={styles.emptyActionTitle}>Scan CV with AI</ActiveText>
+                  <ActiveText style={styles.emptyActionDesc}>Upload your CV or paste resume text to automatically extract and structure your portfolio points.</ActiveText>
+                </AnimatedPressable>
 
-                <TouchableOpacity style={styles.emptyActionCard} onPress={() => setShowModal(true)} activeOpacity={0.8}>
+                <AnimatedPressable style={styles.emptyActionCard} onPress={() => setShowModal(true)}>
                   <View style={[styles.emptyActionIcon, { backgroundColor: `${colors.tertiary}15` }]}>
                     <Ionicons name="create" size={24} color={colors.tertiary} />
                   </View>
-                  <Text style={styles.emptyActionTitle}>Add Manually</Text>
-                  <Text style={styles.emptyActionDesc}>Create a portfolio item from scratch by filling in details.</Text>
-                </TouchableOpacity>
+                  <ActiveText style={styles.emptyActionTitle}>Add Manually</ActiveText>
+                  <ActiveText style={styles.emptyActionDesc}>Create a portfolio item from scratch by filling in details.</ActiveText>
+                </AnimatedPressable>
               </View>
             </View>
           ) : (
             ITEM_TYPES.map(type => {
-              const typeItems = items.filter(i => i.itemType === type);
-              if (typeItems.length === 0) return null;
+              const filteredList = items.filter(i => {
+                if (i.itemType !== type) return false;
+                if (activeFilter === 'PROJECT' && i.itemType !== 'PROJECT') return false;
+                if (activeFilter === 'CERTIFICATION' && i.itemType !== 'CERTIFICATION') return false;
+                if (activeFilter === 'APPROVED' && i.verificationStatus !== 'APPROVED') return false;
+                if (activeFilter === 'PENDING' && i.verificationStatus !== 'PENDING') return false;
+                if (searchQuery.trim()) {
+                  const q = searchQuery.toLowerCase().trim();
+                  return (
+                    i.title?.toLowerCase().includes(q) ||
+                    i.description?.toLowerCase().includes(q)
+                  );
+                }
+                return true;
+              });
+              if (filteredList.length === 0) return null;
               return (
                 <View key={type} style={styles.groupContainer}>
                   <Text style={styles.groupHeader}>
                     {type === 'OTHER' ? 'Other' : type.charAt(0) + type.slice(1).toLowerCase() + 's'}
                   </Text>
                   <View style={styles.timelineWrap}>
-                    {typeItems.map((item, index) => (
+                    {filteredList.map((item, index) => (
                       <View key={item.id} style={styles.timelineItemContainer}>
                         <ItemCard
                           item={item}
@@ -1084,8 +1146,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.xs,
-    backgroundColor: '#ECFDF5',
-    borderColor: '#A7F3D0',
+    backgroundColor: colors.successContainer,
+    borderColor: `${colors.secondary}35`,
     borderWidth: 1,
     padding: spacing.md,
     borderRadius: radius.md,
@@ -1111,7 +1173,7 @@ const styles = StyleSheet.create({
   },
   extractedItemCardSelected: {
     borderColor: colors.secondary,
-    backgroundColor: '#F0FDF4',
+    backgroundColor: colors.successContainer,
   },
   extractedItemHeader: {
     flexDirection: 'row',
@@ -1233,9 +1295,43 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surfaceCard,
     borderRadius: radius.lg ?? 12,
     padding: spacing.xl ?? 48,
-    alignItems: 'center',
-    gap: spacing.sm ?? 8,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
   },
-  processingTitle: { ...typography.headlineSm, color: colors.onSurface },
-  processingSubtitle: { ...typography.bodyMd, color: colors.onSurfaceVariant },
+  searchWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    backgroundColor: colors.surfaceContainerLow,
+    borderRadius: radius.lg,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs + 2,
+    borderWidth: 1,
+    borderColor: colors.outlineVariant,
+  },
+  searchInput: {
+    flex: 1,
+    ...typography.bodyMd,
+    fontSize: 14,
+    color: colors.onSurface,
+    padding: 0,
+  },
+  filterPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: radius.full,
+    backgroundColor: colors.surfaceContainerLow,
+    borderWidth: 1,
+    borderColor: colors.outlineVariant,
+  },
+  filterPillText: {
+    ...typography.labelSm,
+    fontSize: 12,
+    color: colors.onSurfaceVariant,
+  },
 });

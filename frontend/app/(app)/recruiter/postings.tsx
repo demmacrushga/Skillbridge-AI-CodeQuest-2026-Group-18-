@@ -221,7 +221,8 @@ export default function RecruiterPostingsScreen() {
   const token = state.accessToken;
 
   const [postings, setPostings] = useState<Opportunity[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [filter, setFilter] = useState<'ALL' | 'ACTIVE' | 'CLOSED'>('ALL');
+  const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -284,7 +285,6 @@ export default function RecruiterPostingsScreen() {
           <View style={styles.headerLogoMark}>
             <Ionicons name="compass" size={20} color={colors.onPrimary} />
           </View>
-          <Text style={styles.headerBrandTitle}>SkillBridge</Text>
         </View>
         <TouchableOpacity
           style={styles.postBtnHeader}
@@ -312,6 +312,32 @@ export default function RecruiterPostingsScreen() {
           <Text style={styles.pageSubtitle}>Tap any posting to open full specifications popup</Text>
         </View>
 
+        {postings.length > 0 && (
+          <View style={{ flexDirection: 'row', gap: spacing.xs, marginBottom: spacing.md }}>
+            {[
+              { id: 'ALL', label: `All (${postings.length})` },
+              { id: 'ACTIVE', label: `Active (${postings.filter(p => p.active).length})` },
+              { id: 'CLOSED', label: `Closed (${postings.filter(p => !p.active).length})` },
+            ].map(pill => {
+              const isSelected = filter === pill.id;
+              return (
+                <TouchableOpacity
+                  key={pill.id}
+                  style={[
+                    styles.filterChip,
+                    isSelected && styles.filterChipSelected
+                  ]}
+                  onPress={() => setFilter(pill.id as any)}
+                >
+                  <Text style={[styles.filterChipText, isSelected && styles.filterChipTextSelected]}>
+                    {pill.label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        )}
+
         {isLoading ? (
           <ActivityIndicator size="large" color={colors.primary} style={styles.loader} />
         ) : error ? (
@@ -335,7 +361,7 @@ export default function RecruiterPostingsScreen() {
           </View>
         ) : (
           <View style={styles.list}>
-            {postings.map((opp, index) => (
+            {postings.filter(p => filter === 'ACTIVE' ? p.active : filter === 'CLOSED' ? !p.active : true).map((opp, index) => (
               <AnimatedFadeIn key={opp.id} delay={index * 50} duration={350}>
                 <PostingCard
                   opportunity={opp}
@@ -527,10 +553,14 @@ const styles = StyleSheet.create({
     borderRadius: radius.full,
   },
   statusActive: {
-    backgroundColor: `${colors.secondary}15`,
+    backgroundColor: colors.successContainer,
+    borderWidth: 1,
+    borderColor: `${colors.secondary}35`,
   },
   statusInactive: {
-    backgroundColor: `${colors.outline}15`,
+    backgroundColor: colors.surfaceContainerLow,
+    borderWidth: 1,
+    borderColor: colors.outlineVariant,
   },
   statusText: {
     ...typography.labelSm,
@@ -666,4 +696,25 @@ const styles = StyleSheet.create({
     marginTop: spacing.md,
   },
   modalDoneBtnText: { ...typography.labelMd, color: colors.onPrimary },
+
+  filterChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: radius.full,
+    backgroundColor: colors.surfaceContainerLow,
+    borderWidth: 1,
+    borderColor: colors.outlineVariant,
+  },
+  filterChipSelected: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  filterChipText: {
+    ...typography.labelSm,
+    fontSize: 12,
+    color: colors.onSurfaceVariant,
+  },
+  filterChipTextSelected: {
+    color: colors.onPrimary,
+  },
 });
