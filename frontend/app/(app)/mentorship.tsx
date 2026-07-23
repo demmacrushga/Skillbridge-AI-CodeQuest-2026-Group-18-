@@ -15,6 +15,7 @@ import { useFocusEffect } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useAuth } from '@/context/AuthContext';
 import { colors, typography, spacing, radius } from '@/constants/theme';
+import { AnimatedFadeIn, AnimatedPressable } from '@/components/ui/AnimatedView';
 import MessageThread from '@/components/mentorship/MessageThread';
 import {
   searchAlumni,
@@ -75,7 +76,7 @@ function AlumniCard({
   onNoteChange: (v: string) => void;
 }) {
   return (
-    <View style={styles.card}>
+    <AnimatedPressable style={styles.card}>
       <TouchableOpacity onPress={onToggle} activeOpacity={0.8} style={styles.cardHead}>
         <View style={styles.cardBody}>
           <Text style={styles.cardTitle} numberOfLines={expanded ? undefined : 1}>
@@ -132,7 +133,7 @@ function AlumniCard({
           </TouchableOpacity>
         </View>
       ) : null}
-    </View>
+    </AnimatedPressable>
   );
 }
 
@@ -294,6 +295,19 @@ export default function MentorshipScreen() {
           />
         }
       >
+        {/* Hero Banner */}
+        <AnimatedFadeIn delay={0}>
+          <View style={styles.heroBanner}>
+            <View style={styles.heroIconCircle}>
+              <Ionicons name="school" size={32} color={colors.onPrimary} />
+            </View>
+            <Text style={styles.heroBannerTitle}>Alumni Mentorship Network</Text>
+            <Text style={styles.heroBannerSub}>
+              Connect with verified alumni in your industry for 1-on-1 career guidance and mock practice.
+            </Text>
+          </View>
+        </AnimatedFadeIn>
+
         {/* Search */}
         <Text style={styles.sectionLabel}>Find a Mentor</Text>
         <View style={styles.searchCard}>
@@ -502,6 +516,31 @@ const styles = StyleSheet.create({
     marginTop: 1,
   },
   scrollContent: { padding: spacing.md, paddingBottom: spacing.xxl, gap: spacing.md },
+
+  /* Hero Banner */
+  heroBanner: {
+    backgroundColor: colors.secondary,
+    borderRadius: radius.xl,
+    padding: spacing.xl,
+    alignItems: 'center',
+    marginBottom: spacing.xs,
+    shadowColor: colors.secondary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
+    elevation: 3,
+  },
+  heroIconCircle: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: `${colors.onPrimary}25`,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.md,
+  },
+  heroBannerTitle: { ...typography.headlineSm, color: colors.onPrimary, textAlign: 'center' },
+  heroBannerSub: { ...typography.bodySm, color: `${colors.onPrimary}90`, textAlign: 'center', marginTop: 4 },
   sectionLabel: {
     ...typography.labelSm,
     color: colors.onSurfaceVariant,

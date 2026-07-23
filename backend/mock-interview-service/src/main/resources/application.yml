@@ -38,7 +38,7 @@ claude:
   read-timeout-ms: 180000
 
 whisper:
-  url: ${WHISPER_URL:http://whisper-service:9000}
+  url: ${WHISPER_URL:http://localhost:9000}
   timeout-ms: ${WHISPER_TIMEOUT_MS:60000}
   startup-probe: ${WHISPER_STARTUP_PROBE:true}
 

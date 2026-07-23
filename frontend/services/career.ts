@@ -5,6 +5,7 @@ import {
   type GenerateRoadmapPayload,
   type Roadmap,
 } from '@/types/career';
+import { addExp, unlockAchievement } from './achievements';
 
 const BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:8080';
 
@@ -57,10 +58,21 @@ export async function getRoadmap(accessToken: string, userId: string): Promise<R
 export async function completeMilestone(
   accessToken: string,
   milestoneId: string,
+  userId: string,
   payload?: CompleteMilestonePayload
 ): Promise<CompletionResponse> {
-  return request<CompletionResponse>(`/career/milestones/${milestoneId}/complete`, accessToken, {
+  const response = await request<CompletionResponse>(`/career/milestones/${milestoneId}/complete`, accessToken, {
     method: 'PATCH',
     body: JSON.stringify(payload ?? {}),
   });
+  
+  // Local EXP logic
+  try {
+    await addExp(userId, 200);
+    await unlockAchievement(userId, 'ach_5');
+  } catch (e) {
+    console.error('Failed to update EXP locally', e);
+  }
+  
+  return response;
 }

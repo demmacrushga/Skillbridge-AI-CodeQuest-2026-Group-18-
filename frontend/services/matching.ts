@@ -22,7 +22,14 @@ async function request<T>(path: string, accessToken: string, options: RequestIni
 
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
-    throw { status: res.status, message: body.error ?? body.message ?? 'Request failed' };
+    let errMsg = body.message;
+    if (!errMsg && Array.isArray(body.errors)) {
+      errMsg = body.errors.map((e: any) => e.defaultMessage || e.message || JSON.stringify(e)).join(', ');
+    }
+    if (!errMsg || errMsg === 'Bad Request') {
+      errMsg = body.error && body.error !== 'Bad Request' ? body.error : `Request failed (${res.status}). Please check all required fields.`;
+    }
+    throw { status: res.status, message: errMsg };
   }
 
   return res.json();

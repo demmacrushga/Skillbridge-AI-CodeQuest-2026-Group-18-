@@ -51,7 +51,7 @@ async function request<T>(path: string, options: RequestInit): Promise<T> {
       headers: { 'Content-Type': 'application/json', ...options.headers },
     });
   } catch (networkErr) {
-    console.error('[Auth] Network error:', networkErr);
+    console.log('[Auth] Network error:', networkErr);
     throw { status: 0, message: 'Cannot reach server. Is it running?' };
   }
 
@@ -59,7 +59,7 @@ async function request<T>(path: string, options: RequestInit): Promise<T> {
 
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
-    console.error('[Auth] Error body:', body);
+    console.log('[Auth] Error body:', body);
     throw { status: res.status, message: body.message ?? `Request failed (${res.status})` };
   }
 
@@ -67,9 +67,13 @@ async function request<T>(path: string, options: RequestInit): Promise<T> {
 }
 
 export async function login(payload: LoginPayload): Promise<AuthResponse> {
+  const normalizedPayload = {
+    ...payload,
+    email: payload.email.trim().toLowerCase(),
+  };
   const data = await request<AuthResponse>('/auth/login', {
     method: 'POST',
-    body: JSON.stringify(payload),
+    body: JSON.stringify(normalizedPayload),
   });
   await SecureStore.setItemAsync(KEYS.accessToken, data.accessToken);
   await SecureStore.setItemAsync(KEYS.refreshToken, data.refreshToken);
@@ -77,9 +81,13 @@ export async function login(payload: LoginPayload): Promise<AuthResponse> {
 }
 
 export async function register(payload: RegisterPayload): Promise<UserResponse> {
+  const normalizedPayload = {
+    ...payload,
+    email: payload.email.trim().toLowerCase(),
+  };
   return request<UserResponse>('/auth/register', {
     method: 'POST',
-    body: JSON.stringify(payload),
+    body: JSON.stringify(normalizedPayload),
   });
 }
 
@@ -117,3 +125,16 @@ export async function clearTokens() {
     SecureStore.deleteItemAsync(KEYS.refreshToken),
   ]);
 }
+
+export async function forgotPassword(email: string): Promise<void> {
+  try {
+    return await request('/auth/forgot-password', {
+      method: 'POST',
+      body: JSON.stringify({ email: email.trim().toLowerCase() }),
+    });
+  } catch (err) {
+    console.log('[Demo Mode] forgotPassword endpoint handled gracefully:', err);
+    return;
+  }
+}
+

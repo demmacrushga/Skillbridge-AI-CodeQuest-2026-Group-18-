@@ -10,11 +10,14 @@ import {
   RefreshControl,
   Modal,
   TextInput,
+  DeviceEventEmitter,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, router } from 'expo-router';
 import * as DocumentPicker from 'expo-document-picker';
+import * as Clipboard from 'expo-clipboard';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { Skeleton } from '@/components/ui/Skeleton';
 import { useAuth } from '@/context/AuthContext';
 import { colors, typography, spacing, radius } from '@/constants/theme';
 import {
@@ -23,10 +26,7 @@ import {
   generateShareLink,
   getMyPortfolio,
   requestVerification,
-  extractFromCV,
-  extractFromUrl,
 } from '@/services/portfolio';
-import { setExtractedItems } from '@/services/extraction-state';
 import { type PortfolioItem } from '@/types/portfolio';
 
 const ITEM_TYPES = ['PROJECT', 'CERTIFICATION', 'PUBLICATION', 'AWARD', 'OTHER'];
@@ -45,6 +45,14 @@ const STATUS_LABEL: Record<string, string> = {
   REJECTED: 'Rejected',
 };
 
+const ITEM_TYPE_CONFIG: Record<string, { icon: keyof typeof Ionicons.glyphMap; color: string; bg: string }> = {
+  PROJECT: { icon: 'code-slash-outline', color: colors.primary, bg: `${colors.primary}1A` },
+  CERTIFICATION: { icon: 'ribbon-outline', color: '#B45309', bg: '#FEF3C7' },
+  PUBLICATION: { icon: 'document-text-outline', color: colors.tertiary, bg: `${colors.tertiary}1A` },
+  AWARD: { icon: 'trophy-outline', color: '#F59E0B', bg: '#FEF3C7' },
+  OTHER: { icon: 'briefcase-outline', color: colors.secondary, bg: `${colors.secondary}1A` },
+};
+
 function ItemCard({
   item,
   onDelete,
@@ -58,57 +66,98 @@ function ItemCard({
   isDeleting: boolean;
   isRequesting: boolean;
 }) {
+  const [expanded, setExpanded] = useState(false);
   const statusColor = STATUS_COLOR[item.verificationStatus] ?? colors.outline;
   const statusLabel = STATUS_LABEL[item.verificationStatus] ?? item.verificationStatus;
+  const typeCfg = ITEM_TYPE_CONFIG[item.itemType] ?? ITEM_TYPE_CONFIG.OTHER;
 
   return (
-    <View style={styles.card}>
-      <View style={styles.cardHeader}>
-        <View style={styles.cardMeta}>
-          <Text style={styles.cardType}>{item.itemType}</Text>
-          <View style={[styles.statusBadge, { backgroundColor: statusColor + '1A' }]}>
-            <View style={[styles.statusDot, { backgroundColor: statusColor }]} />
-            <Text style={[styles.statusText, { color: statusColor }]}>{statusLabel}</Text>
+    <View style={styles.timelineItemWrap}>
+      <View style={styles.timelineLine} />
+      <View style={[styles.timelineNode, { backgroundColor: typeCfg.bg }]}>
+        <Ionicons name={typeCfg.icon} size={20} color={typeCfg.color} />
+      </View>
+      
+      <TouchableOpacity 
+        style={[styles.card, expanded && styles.cardExpanded]} 
+        onPress={() => setExpanded(!expanded)}
+        activeOpacity={0.9}
+      >
+        <View style={styles.cardHeader}>
+          <View style={styles.cardMeta}>
+            <View style={[styles.statusBadge, { backgroundColor: statusColor + '1A' }]}>
+              <View style={[styles.statusDot, { backgroundColor: statusColor }]} />
+              <Text style={[styles.statusText, { color: statusColor }]}>{statusLabel}</Text>
+            </View>
+          </View>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+            <TouchableOpacity
+              onPress={(e) => {
+                e.stopPropagation?.();
+                onDelete();
+              }}
+              disabled={isDeleting}
+              style={styles.deleteButton}
+              accessibilityLabel="Delete item"
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              {isDeleting ? (
+                <ActivityIndicator size="small" color={colors.error} />
+              ) : (
+                <Ionicons name="trash-outline" size={18} color={colors.error} />
+              )}
+            </TouchableOpacity>
+            <Ionicons name={expanded ? "chevron-up" : "chevron-down"} size={20} color={colors.outline} />
           </View>
         </View>
-        <TouchableOpacity
-          onPress={onDelete}
-          disabled={isDeleting}
-          style={styles.deleteButton}
-          accessibilityLabel="Delete item"
-        >
-          {isDeleting ? (
-            <ActivityIndicator size="small" color={colors.error} />
-          ) : (
-            <Ionicons name="trash-outline" size={18} color={colors.error} />
-          )}
-        </TouchableOpacity>
-      </View>
 
-      <Text style={styles.cardTitle} numberOfLines={2}>{item.title}</Text>
-      {item.description ? (
-        <Text style={styles.cardDescription} numberOfLines={2}>{item.description}</Text>
-      ) : null}
-      {item.externalUrl ? (
-        <Text style={styles.cardUrl} numberOfLines={1}>{item.externalUrl}</Text>
-      ) : null}
+        <Text style={styles.cardTitle} numberOfLines={expanded ? undefined : 2}>{item.title}</Text>
+        
+        {item.description ? (
+          <Text style={styles.cardDescription} numberOfLines={expanded ? undefined : 2}>{item.description}</Text>
+        ) : null}
+        
+        {expanded && item.externalUrl ? (
+          <Text style={styles.cardUrl}>{item.externalUrl}</Text>
+        ) : null}
 
-      {item.verificationStatus === 'NONE' && (
-        <TouchableOpacity
-          style={styles.verifyButton}
-          onPress={onRequestVerification}
-          disabled={isRequesting}
-        >
-          {isRequesting ? (
-            <ActivityIndicator size="small" color={colors.secondary} />
-          ) : (
-            <>
-              <Ionicons name="shield-checkmark-outline" size={14} color={colors.secondary} />
-              <Text style={styles.verifyButtonText}>Request Verification</Text>
-            </>
-          )}
-        </TouchableOpacity>
-      )}
+        {expanded && (
+          <View style={{ flexDirection: 'row', gap: spacing.sm, marginTop: spacing.xs }}>
+            {item.verificationStatus === 'NONE' && (
+              <TouchableOpacity
+                style={[styles.verifyButton, { flex: 1 }]}
+                onPress={(e) => {
+                  e.stopPropagation?.();
+                  onRequestVerification();
+                }}
+                disabled={isRequesting}
+              >
+                {isRequesting ? (
+                  <ActivityIndicator size="small" color={colors.secondary} />
+                ) : (
+                  <>
+                    <Ionicons name="shield-checkmark-outline" size={16} color={colors.secondary} />
+                    <Text style={styles.verifyButtonText}>Request Verification</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            )}
+
+            <TouchableOpacity
+              style={styles.deleteExpandedBtn}
+              onPress={(e) => {
+                e.stopPropagation?.();
+                onDelete();
+              }}
+              disabled={isDeleting}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="trash-outline" size={16} color={colors.error} />
+              <Text style={styles.deleteExpandedText}>Delete</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+      </TouchableOpacity>
     </View>
   );
 }
@@ -151,19 +200,20 @@ function AddItemModal({
           </View>
 
           <Text style={styles.fieldLabel}>Type</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.typeRow}>
+          <View style={styles.typeGrid}>
             {ITEM_TYPES.map(t => (
               <TouchableOpacity
                 key={t}
                 style={[styles.typeChip, itemType === t && styles.typeChipActive]}
                 onPress={() => setItemType(t)}
+                activeOpacity={0.7}
               >
                 <Text style={[styles.typeChipText, itemType === t && styles.typeChipTextActive]}>
                   {t}
                 </Text>
               </TouchableOpacity>
             ))}
-          </ScrollView>
+          </View>
 
           <Text style={styles.fieldLabel}>Title *</Text>
           <TextInput
@@ -196,9 +246,14 @@ function AddItemModal({
             keyboardType="url"
           />
 
-          <TouchableOpacity style={styles.addButton} onPress={handleSubmit}>
-            <Text style={styles.addButtonText}>Add Item</Text>
-          </TouchableOpacity>
+          <View style={styles.buttonGroup}>
+            <TouchableOpacity style={styles.cancelButton} onPress={onClose}>
+              <Text style={styles.cancelButtonText}>Cancel</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.addButton} onPress={handleSubmit}>
+              <Text style={styles.addButtonText}>Save Item</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
     </Modal>
@@ -214,9 +269,7 @@ export default function PortfolioScreen() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [requestingId, setRequestingId] = useState<string | null>(null);
   const [shareLoading, setShareLoading] = useState(false);
-  const [showExtractModal, setShowExtractModal] = useState(false);
-  const [extracting, setExtracting] = useState(false);
-  const [urlInput, setUrlInput] = useState('');
+  const [shareUrl, setShareUrl] = useState('');
 
   const loadItems = useCallback(async (showRefresh = false) => {
     if (!state.accessToken) return;
@@ -296,7 +349,7 @@ export default function PortfolioScreen() {
     setShareLoading(true);
     try {
       const resp = await generateShareLink(state.accessToken);
-      Alert.alert('Share Link', resp.shareUrl, [{ text: 'OK' }]);
+      setShareUrl(resp.shareUrl);
     } catch {
       Alert.alert('Error', 'Failed to generate share link.');
     } finally {
@@ -304,53 +357,12 @@ export default function PortfolioScreen() {
     }
   }
 
-  async function handleCVUpload() {
-    if (!state.accessToken) return;
-    try {
-      const result = await DocumentPicker.getDocumentAsync({
-        type: [
-          'application/pdf',
-          'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-        ],
-        copyToCacheDirectory: true,
-      });
-      if (result.canceled) return;
-
-      setShowExtractModal(false);
-      setExtracting(true);
-      const extracted = await extractFromCV(state.accessToken, result.assets[0]);
-      setExtractedItems(extracted);
-      setExtracting(false);
-      router.push('/(app)/portfolio-review');
-    } catch (err: any) {
-      setExtracting(false);
-      const msg = err?.status === 503
-        ? 'AI service unavailable. Please try again or add items manually.'
-        : err?.message ?? 'Failed to extract items from CV.';
-      Alert.alert('Error', msg);
-    }
+  async function handleCopy() {
+    await Clipboard.setStringAsync(shareUrl);
+    setShareUrl('');
+    Alert.alert('Copied!', 'Link copied to clipboard.');
   }
 
-  async function handleUrlExtract() {
-    if (!state.accessToken || !urlInput.trim()) return;
-    setShowExtractModal(false);
-    setExtracting(true);
-    setUrlInput('');
-    try {
-      const extracted = await extractFromUrl(state.accessToken, urlInput.trim());
-      setExtractedItems(extracted);
-      setExtracting(false);
-      router.push('/(app)/portfolio-review');
-    } catch (err: any) {
-      setExtracting(false);
-      const msg = err?.status === 503
-        ? 'AI service unavailable. Please try again or add items manually.'
-        : err?.status === 502
-        ? 'Could not fetch content from the provided URL.'
-        : err?.message ?? 'Failed to extract items from URL.';
-      Alert.alert('Error', msg);
-    }
-  }
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -370,7 +382,7 @@ export default function PortfolioScreen() {
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.aiButton}
-            onPress={() => setShowExtractModal(true)}
+            onPress={() => DeviceEventEmitter.emit('openChatbot')}
             accessibilityLabel="Build portfolio with AI"
           >
             <Ionicons name="sparkles" size={18} color={colors.onPrimary} />
@@ -387,9 +399,31 @@ export default function PortfolioScreen() {
       </View>
 
       {loading ? (
-        <View style={styles.center}>
-          <ActivityIndicator size="large" color={colors.secondary} />
-        </View>
+        <ScrollView contentContainerStyle={styles.list}>
+          <View style={{ marginBottom: spacing.md }}>
+            <Skeleton width={120} height={20} />
+          </View>
+          <View style={styles.timelineWrap}>
+            {[1, 2, 3, 4].map((key) => (
+              <View key={key} style={styles.timelineItemContainer}>
+                <View style={styles.timelineItemWrap}>
+                  <View style={styles.timelineLine} />
+                  <View style={[styles.timelineNode, { backgroundColor: colors.surfaceContainerHigh }]}>
+                    <Skeleton width={12} height={12} borderRadius={6} />
+                  </View>
+                  <View style={styles.card}>
+                    <View style={styles.cardHeader}>
+                      <Skeleton width={80} height={20} borderRadius={10} />
+                      <Skeleton width={20} height={20} borderRadius={10} />
+                    </View>
+                    <Skeleton width="90%" height={16} style={{ marginTop: 8, marginBottom: 4 }} />
+                    <Skeleton width="60%" height={14} style={{ marginBottom: 4 }} />
+                  </View>
+                </View>
+              </View>
+            ))}
+          </View>
+        </ScrollView>
       ) : (
         <ScrollView
           contentContainerStyle={styles.list}
@@ -400,33 +434,81 @@ export default function PortfolioScreen() {
         >
           {items.length === 0 ? (
             <View style={styles.empty}>
-              <Ionicons name="briefcase-outline" size={48} color={colors.outline} />
-              <Text style={styles.emptyTitle}>No portfolio items yet</Text>
-              <Text style={styles.emptySubtitle}>
-                Add your projects, certifications, and achievements to build your profile.
-              </Text>
-              <TouchableOpacity style={styles.emptyAiButton} onPress={() => setShowExtractModal(true)}>
-                <Ionicons name="sparkles" size={16} color={colors.onPrimary} />
-                <Text style={styles.emptyButtonText}>Build with AI</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.emptyButtonManual} onPress={() => setShowModal(true)}>
-                <Text style={styles.emptyButtonManualText}>Add Item Manually</Text>
-              </TouchableOpacity>
+              <View style={styles.emptyHeaderWrap}>
+                <Ionicons name="briefcase" size={64} color={colors.primary} style={{ opacity: 0.15 }} />
+                <Text style={styles.emptyTitle}>Your Portfolio is Empty</Text>
+                <Text style={styles.emptySubtitle}>
+                  Showcase your skills, projects, and certifications to stand out to recruiters.
+                </Text>
+              </View>
+
+              <View style={styles.emptyCardsRow}>
+                <TouchableOpacity style={styles.emptyActionCard} onPress={() => DeviceEventEmitter.emit('openChatbot')} activeOpacity={0.8}>
+                  <View style={[styles.emptyActionIcon, { backgroundColor: `${colors.tertiary}15` }]}>
+                    <Ionicons name="sparkles" size={24} color={colors.tertiary} />
+                  </View>
+                  <Text style={styles.emptyActionTitle}>Build with AI</Text>
+                  <Text style={styles.emptyActionDesc}>Upload your CV and let AI extract your achievements automatically.</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity style={styles.emptyActionCard} onPress={() => setShowModal(true)} activeOpacity={0.8}>
+                  <View style={[styles.emptyActionIcon, { backgroundColor: `${colors.secondary}15` }]}>
+                    <Ionicons name="create" size={24} color={colors.secondary} />
+                  </View>
+                  <Text style={styles.emptyActionTitle}>Add Manually</Text>
+                  <Text style={styles.emptyActionDesc}>Create a portfolio item from scratch by filling in the details.</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           ) : (
-            items.map(item => (
-              <ItemCard
-                key={item.id}
-                item={item}
-                onDelete={() => handleDelete(item.id)}
-                onRequestVerification={() => handleRequestVerification(item.id)}
-                isDeleting={deletingId === item.id}
-                isRequesting={requestingId === item.id}
-              />
-            ))
+            ITEM_TYPES.map(type => {
+              const typeItems = items.filter(i => i.itemType === type);
+              if (typeItems.length === 0) return null;
+              return (
+                <View key={type} style={styles.groupContainer}>
+                  <Text style={styles.groupHeader}>
+                    {type === 'OTHER' ? 'Other' : type.charAt(0) + type.slice(1).toLowerCase() + 's'}
+                  </Text>
+                  <View style={styles.timelineWrap}>
+                    {typeItems.map((item, index) => (
+                      <View key={item.id} style={styles.timelineItemContainer}>
+                        <ItemCard
+                          item={item}
+                          onDelete={() => handleDelete(item.id)}
+                          onRequestVerification={() => handleRequestVerification(item.id)}
+                          isDeleting={deletingId === item.id}
+                          isRequesting={requestingId === item.id}
+                        />
+                      </View>
+                    ))}
+                  </View>
+                </View>
+              );
+            })
           )}
         </ScrollView>
       )}
+
+      {/* Share link modal */}
+      <Modal visible={!!shareUrl} animationType="fade" transparent onRequestClose={() => setShareUrl('')}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalSheet}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Share Portfolio</Text>
+              <TouchableOpacity onPress={() => setShareUrl('')}>
+                <Ionicons name="close" size={24} color={colors.onSurface} />
+              </TouchableOpacity>
+            </View>
+            <Text style={styles.fieldLabel}>Portfolio Link</Text>
+            <View style={{ flexDirection: 'row', gap: 8, marginTop: 4 }}>
+              <TextInput style={[styles.input, { flex: 1 }]} value={shareUrl} editable={false} />
+              <TouchableOpacity style={{ backgroundColor: colors.secondary, borderRadius: 8, paddingHorizontal: 16, justifyContent: 'center' }} onPress={handleCopy}>
+                <Ionicons name="copy-outline" size={20} color={colors.onPrimary} />
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       <AddItemModal
         visible={showModal}
@@ -434,62 +516,6 @@ export default function PortfolioScreen() {
         onAdd={handleAdd}
       />
 
-      {/* Extraction method modal */}
-      <Modal visible={showExtractModal} animationType="slide" transparent onRequestClose={() => setShowExtractModal(false)}>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalSheet}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Build with AI</Text>
-              <TouchableOpacity onPress={() => setShowExtractModal(false)}>
-                <Ionicons name="close" size={24} color={colors.onSurface} />
-              </TouchableOpacity>
-            </View>
-            <Text style={styles.extractSubtitle}>
-              Upload your CV or paste a website link. AI will extract your achievements automatically.
-            </Text>
-
-            <TouchableOpacity style={styles.extractOption} onPress={handleCVUpload}>
-              <View style={styles.extractOptionIcon}>
-                <Ionicons name="document-text-outline" size={24} color={colors.secondary} />
-              </View>
-              <View style={styles.extractOptionBody}>
-                <Text style={styles.extractOptionTitle}>Upload CV</Text>
-                <Text style={styles.extractOptionHint}>PDF or DOCX, max 5 MB</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={20} color={colors.outline} />
-            </TouchableOpacity>
-
-            <Text style={styles.fieldLabel}>Or paste a website link</Text>
-            <TextInput
-              style={styles.input}
-              value={urlInput}
-              onChangeText={setUrlInput}
-              placeholder="https://github.com/username"
-              placeholderTextColor={colors.outline}
-              autoCapitalize="none"
-              keyboardType="url"
-            />
-            <TouchableOpacity
-              style={[styles.extractUrlButton, !urlInput.trim() && styles.extractUrlButtonDisabled]}
-              onPress={handleUrlExtract}
-              disabled={!urlInput.trim()}
-            >
-              <Text style={styles.extractUrlButtonText}>Extract from URL</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
-
-      {/* Processing overlay */}
-      <Modal visible={extracting} transparent animationType="fade">
-        <View style={styles.processingOverlay}>
-          <View style={styles.processingCard}>
-            <ActivityIndicator size="large" color={colors.secondary} />
-            <Text style={styles.processingTitle}>Extracting items…</Text>
-            <Text style={styles.processingSubtitle}>This may take 5–15 seconds</Text>
-          </View>
-        </View>
-      </Modal>
     </SafeAreaView>
   );
 }
@@ -502,9 +528,8 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: spacing.lg ?? 24,
     paddingVertical: spacing.md ?? 16,
-    backgroundColor: colors.surfaceCard,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.outlineVariant,
+    backgroundColor: colors.surface,
+    borderBottomWidth: 0,
   },
   title: { ...typography.headlineMd, color: colors.onSurface },
   headerActions: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm ?? 8 },
@@ -519,64 +544,121 @@ const styles = StyleSheet.create({
     borderRadius: radius.full ?? 999,
     padding: spacing.sm ?? 8,
   },
-  list: { padding: spacing.md ?? 16, gap: spacing.md ?? 16 },
+  list: { padding: spacing.md ?? 16 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  empty: { alignItems: 'center', paddingTop: spacing.xl ?? 48, gap: spacing.sm ?? 8 },
-  emptyTitle: { ...typography.headlineSm, color: colors.onSurface, marginTop: spacing.md ?? 16 },
-  emptySubtitle: {
-    ...typography.bodyMd,
-    color: colors.onSurfaceVariant,
-    textAlign: 'center',
-    paddingHorizontal: spacing.xl ?? 48,
+
+  // Grouped Layout
+  groupContainer: { marginBottom: spacing.xl },
+  groupHeader: { ...typography.headlineSm, color: colors.primary, marginBottom: spacing.md, marginLeft: 2 },
+  
+  // Timeline Styles
+  timelineWrap: {
+    paddingLeft: spacing.md,
   },
-  emptyButton: {
-    marginTop: spacing.md ?? 16,
-    backgroundColor: colors.secondary,
-    borderRadius: radius.md ?? 8,
-    paddingHorizontal: spacing.lg ?? 24,
-    paddingVertical: spacing.sm ?? 8,
+  timelineItemContainer: {
+    marginBottom: spacing.md,
   },
-  emptyButtonText: { ...typography.labelMd, color: colors.onPrimary },
+  timelineItemWrap: {
+    position: 'relative',
+    paddingLeft: spacing.xl + 4, // Space for the line and node
+  },
+  timelineLine: {
+    position: 'absolute',
+    left: 11, // align with node center (24/2)
+    top: 24, // starts slightly below top of node
+    bottom: -spacing.md, // extends to next item
+    width: 2,
+    backgroundColor: `${colors.primary}15`,
+    zIndex: 1,
+  },
+  timelineNode: {
+    position: 'absolute',
+    left: 0,
+    top: 4,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 2,
+    borderWidth: 2,
+    borderColor: colors.surface,
+  },
 
   // Card
   card: {
     backgroundColor: colors.surfaceCard,
     borderRadius: radius.lg ?? 12,
     padding: spacing.md ?? 16,
-    gap: spacing.xs ?? 4,
+    gap: spacing.sm ?? 8,
     borderWidth: 1,
     borderColor: colors.outlineVariant,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 2,
   },
+  cardExpanded: {
+    borderColor: `${colors.primary}40`,
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+    elevation: 4,
+  },
+
   cardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: spacing.xs ?? 4,
   },
-  cardMeta: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm ?? 8 },
-  cardType: { ...typography.labelSm, color: colors.onSurfaceVariant, textTransform: 'uppercase' },
+  cardMeta: { flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' },
+  typeIconWrap: {
+    width: 26,
+    height: 26,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 2,
+  },
   statusBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    paddingHorizontal: spacing.sm ?? 8,
+    paddingHorizontal: spacing.xs ?? 6,
     paddingVertical: 2,
     borderRadius: radius.full ?? 999,
   },
   statusDot: { width: 6, height: 6, borderRadius: 3 },
-  statusText: { ...typography.labelSm },
-  deleteButton: { padding: 4 },
-  cardTitle: { ...typography.headlineSm, color: colors.onSurface },
-  cardDescription: { ...typography.bodyMd, color: colors.onSurfaceVariant },
-  cardUrl: { ...typography.labelMd, color: colors.tertiary },
+  statusText: { ...typography.labelSm, fontSize: 9 },
+  deleteButton: { padding: 4, alignSelf: 'flex-start' },
+  cardTitle: { ...typography.headlineSm, fontSize: 13, color: colors.onSurface, lineHeight: 18 },
+  cardDescription: { ...typography.bodyMd, fontSize: 12, color: colors.onSurfaceVariant },
+  cardUrl: { ...typography.labelMd, fontSize: 11, color: colors.tertiary },
   verifyButton: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: 4,
     marginTop: spacing.sm ?? 8,
-    alignSelf: 'flex-start',
+    backgroundColor: `${colors.secondary}15`,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: radius.md,
   },
   verifyButtonText: { ...typography.labelMd, color: colors.secondary },
+  deleteExpandedBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    marginTop: spacing.sm ?? 8,
+    backgroundColor: `${colors.error}15`,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: radius.md,
+  },
+  deleteExpandedText: { ...typography.labelMd, color: colors.error },
 
   // Modal
   modalOverlay: {
@@ -599,19 +681,19 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md ?? 16,
   },
   modalTitle: { ...typography.headlineSm, color: colors.onSurface },
-  fieldLabel: { ...typography.labelMd, color: colors.onSurfaceVariant, marginTop: spacing.sm ?? 8 },
-  typeRow: { flexDirection: 'row', marginBottom: spacing.sm ?? 8 },
+  fieldLabel: { ...typography.labelSm, color: colors.outline, textTransform: 'uppercase', marginBottom: 4, marginTop: spacing.md },
+  typeGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs },
   typeChip: {
     paddingHorizontal: spacing.md ?? 16,
-    paddingVertical: spacing.xs ?? 4,
-    borderRadius: radius.full ?? 999,
+    paddingVertical: spacing.xs ?? 6,
+    borderRadius: radius.md ?? 8,
     borderWidth: 1,
     borderColor: colors.outlineVariant,
-    marginRight: spacing.xs ?? 4,
+    backgroundColor: colors.surfaceContainerLow,
   },
   typeChipActive: { backgroundColor: colors.secondary, borderColor: colors.secondary },
   typeChipText: { ...typography.labelMd, color: colors.onSurfaceVariant },
-  typeChipTextActive: { color: colors.onPrimary },
+  typeChipTextActive: { color: colors.onPrimary, fontWeight: '700' },
   input: {
     borderWidth: 1,
     borderColor: colors.outlineVariant,
@@ -621,14 +703,23 @@ const styles = StyleSheet.create({
     color: colors.onSurface,
   },
   inputMultiline: { height: 80, textAlignVertical: 'top' },
+  buttonGroup: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.lg },
+  cancelButton: {
+    flex: 1,
+    padding: spacing.md ?? 16,
+    alignItems: 'center',
+    borderRadius: radius.md ?? 8,
+    backgroundColor: colors.surfaceContainerHigh,
+  },
+  cancelButtonText: { ...typography.labelMd, color: colors.onSurface },
   addButton: {
+    flex: 2,
     backgroundColor: colors.secondary,
     borderRadius: radius.md ?? 8,
     padding: spacing.md ?? 16,
     alignItems: 'center',
-    marginTop: spacing.md ?? 16,
   },
-  addButtonText: { ...typography.labelMd, color: colors.onPrimary },
+  addButtonText: { ...typography.labelMd, color: colors.onPrimary, fontWeight: '700' },
 
   // AI Build button
   aiButton: {
@@ -642,26 +733,34 @@ const styles = StyleSheet.create({
   },
   aiButtonText: { ...typography.labelSm, color: colors.onPrimary, fontWeight: '700' },
 
-  // Empty state AI button
-  emptyAiButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginTop: spacing.md ?? 16,
-    backgroundColor: colors.secondary,
-    borderRadius: radius.md ?? 8,
-    paddingHorizontal: spacing.lg ?? 24,
-    paddingVertical: spacing.sm ?? 8,
-  },
-  emptyButtonManual: {
-    marginTop: spacing.sm ?? 8,
-    borderRadius: radius.md ?? 8,
-    paddingHorizontal: spacing.lg ?? 24,
-    paddingVertical: spacing.sm ?? 8,
+  // Empty state
+  empty: { flex: 1, padding: spacing.md ?? 16, justifyContent: 'center' },
+  emptyHeaderWrap: { alignItems: 'center', marginBottom: spacing.xl, paddingHorizontal: spacing.md },
+  emptyTitle: { ...typography.headlineSm, color: colors.onSurface, marginTop: spacing.md ?? 16 },
+  emptySubtitle: { ...typography.bodyMd, color: colors.onSurfaceVariant, textAlign: 'center', marginTop: spacing.sm ?? 8 },
+  emptyCardsRow: { flexDirection: 'column', gap: spacing.md },
+  emptyActionCard: {
+    backgroundColor: colors.surfaceCard,
+    borderRadius: radius.xl,
+    padding: spacing.lg,
     borderWidth: 1,
     borderColor: colors.outlineVariant,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
   },
-  emptyButtonManualText: { ...typography.labelMd, color: colors.onSurfaceVariant },
+  emptyActionIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: spacing.md,
+  },
+  emptyActionTitle: { ...typography.labelMd, color: colors.primary, fontSize: 18, marginBottom: 4 },
+  emptyActionDesc: { ...typography.bodyMd, color: colors.onSurfaceVariant, fontSize: 14 },
 
   // Extraction modal
   extractSubtitle: {

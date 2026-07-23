@@ -9,11 +9,15 @@ import {
   Animated,
   ActivityIndicator,
   BackHandler,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useAuth } from '@/context/AuthContext';
+import { showToast } from '@/components/ui/Toast';
 import { colors, typography, spacing, radius } from '@/constants/theme';
 import { getSession, submitAnswer, completeSession, transcribeAnswer } from '@/services/mockInterview';
 import { useInterviewRecorder } from '@/hooks/useInterviewRecorder';
@@ -45,6 +49,16 @@ function scoreColor(score: number) {
   return colors.error;
 }
 
+function formatTranscriptText(rawText: string): string {
+  if (!rawText || !rawText.trim()) return '';
+  let formatted = rawText.trim();
+  formatted = formatted.charAt(0).toUpperCase() + formatted.slice(1);
+  if (!/[.!?]$/.test(formatted)) {
+    formatted += '.';
+  }
+  return formatted;
+}
+
 export default function MockInterviewSessionScreen() {
   const { sessionId } = useLocalSearchParams<{ sessionId: string }>();
   const { state } = useAuth();
@@ -62,6 +76,27 @@ export default function MockInterviewSessionScreen() {
   const [isCompleting, setIsCompleting] = useState(false);
   const [isTranscribing, setIsTranscribing] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+
+  const speakText = (text: string) => {
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      if (isSpeaking) {
+        window.speechSynthesis.cancel();
+        setIsSpeaking(false);
+        return;
+      }
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.rate = 0.95;
+      utterance.pitch = 1.0;
+      utterance.onend = () => setIsSpeaking(false);
+      utterance.onerror = () => setIsSpeaking(false);
+      setIsSpeaking(true);
+      window.speechSynthesis.speak(utterance);
+    } else {
+      Alert.alert('AI Interviewer Speaker', text);
+    }
+  };
 
   const fetchSession = useCallback(async () => {
     if (!token || !sessionId) return;
@@ -171,7 +206,9 @@ export default function MockInterviewSessionScreen() {
       setIsTranscribing(true);
       try {
         const transcript = await transcribeAnswer(token, session.id, currentQuestion.id, uri, contentType);
-        setAnswer(transcript);
+        const formatted = formatTranscriptText(transcript);
+        setAnswer(prev => (prev && prev.trim() ? `${prev.trim()} ${formatted}` : formatted));
+        showToast('Speech transcribed via OpenAI Whisper! 🎙️');
       } catch (e: any) {
         if (e?.status === 422) {
           setActionError('No speech was detected — please try again.');
@@ -240,34 +277,49 @@ export default function MockInterviewSessionScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <View style={styles.header}>
-        <TouchableOpacity
-          onPress={() => router.navigate('/(app)/mock-interview')}
-          style={styles.backBtn}
-          activeOpacity={0.7}
-        >
-          <Ionicons name="arrow-back" size={22} color={colors.primary} />
-        </TouchableOpacity>
-        <View style={styles.headerText}>
-          <Text style={styles.headerTitle} numberOfLines={1}>{session.targetRole}</Text>
-          <Text style={styles.headerSubtitle}>
-            Question {currentIndex + 1} of {sortedQuestions.length} ·{' '}
-            {CATEGORY_LABEL[currentQuestion?.category ?? 'OTHER'] ?? 'General'}
-          </Text>
-        </View>
-      </View>
-
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
+        <View style={styles.header}>
+          <TouchableOpacity
+            onPress={() => router.navigate('/(app)/mock-interview')}
+            style={styles.backBtn}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="arrow-back" size={22} color={colors.primary} />
+          </TouchableOpacity>
+          <View style={styles.headerText}>
+            <Text style={styles.headerTitle} numberOfLines={1}>{session.targetRole}</Text>
+            <Text style={styles.headerSubtitle}>
+              Question {currentIndex + 1} of {sortedQuestions.length} ·{' '}
+              {CATEGORY_LABEL[currentQuestion?.category ?? 'OTHER'] ?? 'General'}
+            </Text>
+          </View>
+        </View>
+
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
         {currentQuestion ? (
           <View style={styles.questionCard}>
-            <View style={styles.categoryPill}>
-              <Text style={styles.categoryPillText}>
-                {CATEGORY_LABEL[currentQuestion.category] ?? 'General'}
-              </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.xs }}>
+              <View style={styles.categoryPill}>
+                <Text style={styles.categoryPillText}>
+                  {CATEGORY_LABEL[currentQuestion.category] ?? 'General'}
+                </Text>
+              </View>
+
+              <TouchableOpacity
+                style={styles.speakBtn}
+                onPress={() => speakText(currentQuestion.questionText)}
+                activeOpacity={0.8}
+              >
+                <Ionicons name={isSpeaking ? "volume-mute" : "volume-high"} size={16} color={colors.secondary} />
+                <Text style={styles.speakBtnText}>{isSpeaking ? 'Stop Voice' : 'Read Out Loud'}</Text>
+              </TouchableOpacity>
             </View>
             <Text style={styles.questionText}>{currentQuestion.questionText}</Text>
 
@@ -293,7 +345,10 @@ export default function MockInterviewSessionScreen() {
                   placeholder="Type your answer here…"
                   placeholderTextColor={colors.outline}
                   value={answer}
-                  onChangeText={setAnswer}
+                  onChangeText={text => {
+                    setAnswer(text);
+                    if (actionError) setActionError(null);
+                  }}
                   multiline
                   textAlignVertical="top"
                 />
@@ -311,15 +366,15 @@ export default function MockInterviewSessionScreen() {
                       activeOpacity={0.8}
                     >
                       {isTranscribing ? (
-                        <ActivityIndicator size="small" color={colors.onPrimary} />
+                        <ActivityIndicator size="small" color={colors.primary} />
                       ) : (
                         <Ionicons
                           name={recorder.isRecording ? 'stop-circle' : 'mic'}
                           size={18}
-                          color={colors.onPrimary}
+                          color={recorder.isRecording ? '#FFFFFF' : colors.primary}
                         />
                       )}
-                      <Text style={styles.recordBtnText}>
+                      <Text style={[styles.recordBtnText, recorder.isRecording && styles.recordBtnTextActive]}>
                         {isTranscribing
                           ? 'Transcribing…'
                           : recorder.isRecording
@@ -382,7 +437,8 @@ export default function MockInterviewSessionScreen() {
             <Text style={styles.errorText}>No question available.</Text>
           </View>
         )}
-      </ScrollView>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
@@ -417,7 +473,17 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
   },
   retryText: { ...typography.labelMd, color: colors.onPrimary },
-  scrollContent: { padding: spacing.md, paddingBottom: spacing.xxl, gap: spacing.md },
+  speakBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: `${colors.secondary}15`,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: radius.full,
+  },
+  speakBtnText: { ...typography.labelSm, color: colors.secondary, fontSize: 12 },
+  scrollContent: { padding: spacing.md, paddingBottom: 160, gap: spacing.md },
 
   questionCard: {
     backgroundColor: colors.surfaceCard,
@@ -464,34 +530,47 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: spacing.xs,
-    backgroundColor: colors.surfaceContainerHigh,
+    gap: spacing.xs + 2,
+    backgroundColor: '#EFF6FF',
+    borderWidth: 1.5,
+    borderColor: '#3B82F6',
     borderRadius: radius.md,
-    paddingVertical: spacing.sm,
+    paddingVertical: 12,
     paddingHorizontal: spacing.md,
     flex: 1,
   },
   recordBtnActive: {
-    backgroundColor: colors.error,
+    backgroundColor: '#EF4444',
+    borderColor: '#DC2626',
   },
   recordBtnDisabled: {
-    backgroundColor: colors.surfaceContainerHigh,
     opacity: 0.6,
   },
   recordBtnText: {
-    ...typography.labelMd,
-    color: colors.onPrimary,
-    fontSize: 13,
+    fontFamily: 'PlusJakartaSans_600SemiBold',
+    color: colors.primary,
+    fontSize: 14,
+  },
+  recordBtnTextActive: {
+    color: '#FFFFFF',
   },
   submitBtn: {
-    backgroundColor: colors.tertiary,
+    backgroundColor: colors.primary,
     borderRadius: radius.md,
-    padding: spacing.md,
+    paddingVertical: 14,
+    paddingHorizontal: spacing.md,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  submitBtnDisabled: { backgroundColor: colors.surfaceContainerHigh },
-  submitBtnText: { ...typography.labelMd, color: colors.onPrimary },
+  submitBtnDisabled: {
+    backgroundColor: '#CBD5E1',
+    opacity: 0.7,
+  },
+  submitBtnText: {
+    fontFamily: 'PlusJakartaSans_700Bold',
+    color: '#FFFFFF',
+    fontSize: 15,
+  },
 
   evaluationBox: {
     backgroundColor: colors.surface,

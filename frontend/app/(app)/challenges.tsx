@@ -15,6 +15,8 @@ import { useFocusEffect } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useAuth } from '@/context/AuthContext';
 import { colors, typography, spacing, radius } from '@/constants/theme';
+import { SkeletonChallengeCard } from '@/components/ui/SkeletonCard';
+import { AnimatedFadeIn, AnimatedPressable } from '@/components/ui/AnimatedView';
 import {
   getChallenges,
   submit,
@@ -104,7 +106,7 @@ function ChallengeCard({
   token: string;
 }) {
   return (
-    <View style={styles.card}>
+    <AnimatedPressable style={styles.card}>
       <TouchableOpacity onPress={onToggle} activeOpacity={0.8} style={styles.cardHead}>
         <View style={styles.cardBody}>
           <Text style={styles.cardTitle} numberOfLines={expanded ? undefined : 1}>
@@ -167,7 +169,7 @@ function ChallengeCard({
           <LeaderboardList challengeId={challenge.id} token={token} />
         </View>
       ) : null}
-    </View>
+    </AnimatedPressable>
   );
 }
 
@@ -262,10 +264,26 @@ export default function ChallengesScreen() {
           />
         }
       >
+        {/* Hero Card Banner */}
+        <AnimatedFadeIn delay={0}>
+          <View style={styles.heroBanner}>
+            <View style={styles.heroIconCircle}>
+              <Ionicons name="trophy" size={32} color={colors.onPrimary} />
+            </View>
+            <Text style={styles.heroBannerTitle}>Industry Skill Challenges</Text>
+            <Text style={styles.heroBannerSub}>
+              Solve real recruiter challenges, build verified portfolio proof, and earn leaderboard ranks.
+            </Text>
+          </View>
+        </AnimatedFadeIn>
+
         <Text style={styles.sectionLabel}>Open Challenges</Text>
 
         {isLoading ? (
-          <ActivityIndicator size="small" color={colors.primary} style={styles.loader} />
+          <View style={{ gap: spacing.sm }}>
+            <SkeletonChallengeCard />
+            <SkeletonChallengeCard />
+          </View>
         ) : error ? (
           <View style={styles.errorRow}>
             <Ionicons name="alert-circle-outline" size={14} color={colors.error} />
@@ -274,29 +292,31 @@ export default function ChallengesScreen() {
         ) : challenges.length === 0 ? (
           <View style={styles.emptyCard}>
             <View style={styles.emptyIconWrap}>
-              <Ionicons name="trophy-outline" size={28} color={colors.onSurfaceVariant} />
+              <Ionicons name="trophy-outline" size={28} color={colors.secondary} />
             </View>
-            <Text style={styles.emptyTitle}>No open challenges</Text>
+            <Text style={styles.emptyTitle}>No Open Challenges</Text>
             <Text style={styles.emptySubtitle}>
-              New industry challenges posted by recruiters will appear here
+              No challenges available right now. Check back soon for new coding & skill challenges from top recruiters!
             </Text>
           </View>
         ) : (
-          <View style={styles.cardList}>
-            {challenges.map(c => (
-              <ChallengeCard
-                key={c.id}
-                challenge={c}
-                token={token}
-                expanded={expandedId === c.id}
-                onToggle={() => setExpandedId(prev => (prev === c.id ? null : c.id))}
-                onSubmit={() => handleSubmit(c)}
-                isSubmitting={submittingId === c.id}
-                url={urls[c.id] ?? ''}
-                onUrlChange={v => setUrls(prev => ({ ...prev, [c.id]: v }))}
-              />
-            ))}
-          </View>
+          <AnimatedFadeIn delay={100} duration={450}>
+            <View style={styles.cardList}>
+              {challenges.map(c => (
+                <ChallengeCard
+                  key={c.id}
+                  challenge={c}
+                  token={token}
+                  expanded={expandedId === c.id}
+                  onToggle={() => setExpandedId(prev => (prev === c.id ? null : c.id))}
+                  onSubmit={() => handleSubmit(c)}
+                  isSubmitting={submittingId === c.id}
+                  url={urls[c.id] ?? ''}
+                  onUrlChange={v => setUrls(prev => ({ ...prev, [c.id]: v }))}
+                />
+              ))}
+            </View>
+          </AnimatedFadeIn>
         )}
 
         {/* My Submissions */}
@@ -373,6 +393,31 @@ const styles = StyleSheet.create({
     marginTop: 1,
   },
   scrollContent: { padding: spacing.md, paddingBottom: spacing.xxl, gap: spacing.md },
+
+  /* Hero Banner */
+  heroBanner: {
+    backgroundColor: colors.secondary,
+    borderRadius: radius.xl,
+    padding: spacing.xl,
+    alignItems: 'center',
+    marginBottom: spacing.xs,
+    shadowColor: colors.secondary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
+    elevation: 3,
+  },
+  heroIconCircle: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: `${colors.onPrimary}25`,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.md,
+  },
+  heroBannerTitle: { ...typography.headlineSm, color: colors.onPrimary, textAlign: 'center' },
+  heroBannerSub: { ...typography.bodySm, color: `${colors.onPrimary}90`, textAlign: 'center', marginTop: 4 },
   sectionLabel: {
     ...typography.labelSm,
     color: colors.onSurfaceVariant,

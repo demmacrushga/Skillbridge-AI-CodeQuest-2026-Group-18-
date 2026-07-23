@@ -4,25 +4,28 @@ import {
   Text,
   TouchableOpacity,
   StyleSheet,
-  ScrollView,
   Animated,
   ActivityIndicator,
   Image,
+  Dimensions,
+  ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { router, useFocusEffect } from 'expo-router';
+import { router, useFocusEffect, Redirect } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { getUnreadCount } from '@/services/notification';
 import { useAuth } from '@/context/AuthContext';
 import { colors, typography, spacing, radius } from '@/constants/theme';
 import { getRoadmap } from '@/services/career';
 import { type Milestone, type Roadmap } from '@/types/career';
+import { Skeleton } from '@/components/ui/Skeleton';
+import { AnimatedFadeIn, AnimatedPressable } from '@/components/ui/AnimatedView';
 
 const TYPE_CONFIG: Record<Milestone['type'], { icon: keyof typeof Ionicons.glyphMap; color: string; label: string }> = {
-  SKILL:      { icon: 'book-outline',      color: colors.tertiary,         label: 'Skill' },
-  PROJECT:    { icon: 'code-slash-outline', color: colors.secondary,        label: 'Project' },
-  CERT:       { icon: 'trophy-outline',     color: '#B45309',               label: 'Cert' },
-  EXPERIENCE: { icon: 'briefcase-outline',  color: colors.onSurfaceVariant, label: 'Experience' },
+  SKILL: { icon: 'book-outline', color: colors.tertiary, label: 'Skill' },
+  PROJECT: { icon: 'code-slash-outline', color: colors.secondary, label: 'Project' },
+  CERT: { icon: 'trophy-outline', color: '#B45309', label: 'Cert' },
+  EXPERIENCE: { icon: 'briefcase-outline', color: colors.onSurfaceVariant, label: 'Experience' },
 };
 
 function usePulse() {
@@ -38,21 +41,34 @@ function usePulse() {
   return anim;
 }
 
+const SCREEN_WIDTH = Dimensions.get('window').width;
+const GRID_PADDING = spacing.lg * 2; // left + right padding
+const GRID_GAP = spacing.sm + 4; // 12px gap between items
+const COLUMNS = 4;
+const QUICK_LINK_SIZE = (SCREEN_WIDTH - GRID_PADDING - GRID_GAP * (COLUMNS - 1)) / COLUMNS;
+
 interface QuickLinkProps {
   icon: keyof typeof Ionicons.glyphMap;
   label: string;
   color: string;
   onPress: () => void;
+  index: number;
 }
 
-function QuickLink({ icon, label, color, onPress }: QuickLinkProps) {
+function QuickLink({ icon, label, color, onPress, index }: QuickLinkProps) {
   return (
-    <TouchableOpacity style={styles.quickLink} onPress={onPress} activeOpacity={0.75}>
-      <View style={[styles.quickLinkIcon, { backgroundColor: `${color}15` }]}>
-        <Ionicons name={icon} size={22} color={color} />
-      </View>
-      <Text style={styles.quickLinkLabel} numberOfLines={1}>{label}</Text>
-    </TouchableOpacity>
+    <AnimatedFadeIn delay={400 + index * 60} duration={400}>
+      <AnimatedPressable
+        style={[styles.quickLink, { width: QUICK_LINK_SIZE }]}
+        onPress={onPress}
+        activeOpacity={0.75}
+      >
+        <View style={[styles.quickLinkIcon, { backgroundColor: `${color}15` }]}>
+          <Ionicons name={icon} size={22} color={color} />
+        </View>
+        <Text style={styles.quickLinkLabel} numberOfLines={1}>{label}</Text>
+      </AnimatedPressable>
+    </AnimatedFadeIn>
   );
 }
 
@@ -66,6 +82,16 @@ export default function DashboardScreen() {
   const roleLabel = user?.role
     ? user.role.charAt(0) + user.role.slice(1).toLowerCase()
     : 'Student';
+
+  if (user?.role === 'RECRUITER') {
+    // @ts-ignore: expo-router typing bug for index routes
+    return <Redirect href="/(app)/recruiter" />;
+  }
+
+  if (user?.role === 'ALUMNI') {
+    // @ts-ignore: expo-router typing bug for index routes
+    return <Redirect href="/(app)/alumni" />;
+  }
 
   const [roadmap, setRoadmap] = useState<Roadmap | null>(null);
   const [loadingRoadmap, setLoadingRoadmap] = useState(true);
@@ -104,29 +130,40 @@ export default function DashboardScreen() {
   const doneCount = roadmap?.milestones.filter(m => m.completed).length ?? 0;
   const totalCount = roadmap?.milestones.length ?? 0;
   const progress = roadmap?.progressPercent ?? 0;
+  const remainingMilestones = roadmap?.milestones.filter(m => !m.completed) || [];
+  const SCREEN_WIDTH = Dimensions.get('window').width;
 
-  const nextMilestone = roadmap?.milestones
-    .slice()
-    .sort((a, b) => a.semester - b.semester || a.order - b.order)
-    .find(m => !m.completed) ?? null;
+  const progressAnim = useRef(new Animated.Value(0)).current;
 
-  const nextCfg = nextMilestone ? (TYPE_CONFIG[nextMilestone.type] ?? TYPE_CONFIG.SKILL) : null;
+  useEffect(() => {
+    Animated.timing(progressAnim, {
+      toValue: Math.min(progress, 100),
+      duration: 900,
+      useNativeDriver: false,
+    }).start();
+  }, [progress]);
+
+  const animatedWidth = progressAnim.interpolate({
+    inputRange: [0, 100],
+    outputRange: ['0%', '100%'],
+  });
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
-        <Image
-          source={require('@/assets/images/logo.png')}
-          style={styles.headerLogo}
-          resizeMode="contain"
-        />
+        <View style={styles.headerLeft}>
+          <View style={styles.headerLogoMark}>
+            <Ionicons name="compass" size={20} color={colors.onPrimary} />
+          </View>
+          <Text style={styles.headerBrandTitle}>SkillBridge</Text>
+        </View>
         <TouchableOpacity
           style={styles.headerBtn}
           accessibilityLabel="Notifications"
           onPress={() => router.push('./notifications')}
         >
-          <Ionicons name="notifications-outline" size={22} color={colors.onPrimary} />
+          <Ionicons name="notifications-outline" size={22} color={colors.primary} />
           {unreadCount > 0 && (
             <View style={styles.badge}>
               <Text style={styles.badgeText}>{unreadCount > 99 ? '99+' : unreadCount}</Text>
@@ -135,125 +172,31 @@ export default function DashboardScreen() {
         </TouchableOpacity>
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <View style={styles.scrollContent}>
 
         {/* Greeting */}
-        <View style={styles.greetingRow}>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.greetingHello}>{greeting}</Text>
-            <Text style={styles.greetingName}>{user?.firstName ?? 'Student'} 👋</Text>
-          </View>
-          <View style={styles.roleBadge}>
-            <Ionicons name="school-outline" size={12} color={colors.secondary} />
-            <Text style={styles.roleBadgeText}>{roleLabel}</Text>
-          </View>
-        </View>
-
-        {/* Hero progress card */}
-        <View style={styles.heroCard}>
-          {/* Top row */}
-          <View style={styles.heroTop}>
+        <AnimatedFadeIn delay={100} duration={400}>
+          <View style={styles.greetingRow}>
             <View style={{ flex: 1 }}>
-              <Text style={styles.heroEyebrow}>CAREER READINESS</Text>
-              {roadmap ? (
-                <Text style={styles.heroCareerPath} numberOfLines={1}>{roadmap.careerPath}</Text>
-              ) : (
-                <Text style={styles.heroCareerPathMuted}>No roadmap yet</Text>
-              )}
+              <Text style={styles.greetingHello}>{greeting}</Text>
+              <Text style={styles.greetingName}>{user?.firstName ?? 'Student'} 👋</Text>
             </View>
-            <View style={styles.heroScoreBadge}>
-              <Text style={styles.heroScoreNum}>{progress}</Text>
-              <Text style={styles.heroScorePct}>%</Text>
+            <View style={styles.roleBadge}>
+              <Ionicons name="school-outline" size={12} color={colors.secondary} />
+              <Text style={styles.roleBadgeText}>{roleLabel}</Text>
             </View>
           </View>
-
-          {/* Progress bar */}
-          <View style={styles.heroProgressTrack}>
-            <Animated.View style={[styles.heroProgressFill, { width: `${Math.min(progress, 100)}%` }]} />
-          </View>
-
-          {/* Stats strip */}
-          <View style={styles.heroStats}>
-            <View style={styles.heroStat}>
-              <Text style={styles.heroStatValue}>{loadingRoadmap ? '—' : doneCount}</Text>
-              <Text style={styles.heroStatLabel}>Completed</Text>
-            </View>
-            <View style={styles.heroStatDivider} />
-            <View style={styles.heroStat}>
-              <Text style={styles.heroStatValue}>{loadingRoadmap ? '—' : totalCount}</Text>
-              <Text style={styles.heroStatLabel}>Milestones</Text>
-            </View>
-            <View style={styles.heroStatDivider} />
-            <View style={styles.heroStat}>
-              <Text style={styles.heroStatValue}>{loadingRoadmap ? '—' : (totalCount - doneCount)}</Text>
-              <Text style={styles.heroStatLabel}>Remaining</Text>
-            </View>
-          </View>
-        </View>
-
-        {/* Up Next card */}
-        {loadingRoadmap ? (
-          <View style={styles.upNextLoading}>
-            <ActivityIndicator size="small" color={colors.tertiary} />
-            <Text style={styles.upNextLoadingText}>Loading your roadmap…</Text>
-          </View>
-        ) : nextMilestone && nextCfg ? (
-          <TouchableOpacity
-            style={styles.upNextCard}
-            onPress={() => router.push('./career')}
-            activeOpacity={0.82}
-          >
-            <View style={styles.upNextHeader}>
-              <View style={styles.upNextLive}>
-                <Animated.View style={[styles.upNextDot, { opacity: pulseOpacity }]} />
-                <Text style={styles.upNextEyebrow}>
-                  UP NEXT · {user?.role === 'ALUMNI' ? `PHASE ${nextMilestone.semester}` : `SEMESTER ${nextMilestone.semester}`}
-                </Text>
-              </View>
-              <Ionicons name="arrow-forward" size={16} color={colors.tertiary} />
-            </View>
-
-            <Text style={styles.upNextTitle}>{nextMilestone.title}</Text>
-            {nextMilestone.description ? (
-              <Text style={styles.upNextDesc} numberOfLines={2}>{nextMilestone.description}</Text>
-            ) : null}
-
-            <View style={styles.upNextFooter}>
-              <View style={[styles.upNextTypeBadge, { backgroundColor: `${nextCfg.color}15`, borderColor: `${nextCfg.color}35` }]}>
-                <Ionicons name={nextCfg.icon} size={11} color={nextCfg.color} />
-                <Text style={[styles.upNextTypeText, { color: nextCfg.color }]}>{nextCfg.label}</Text>
-              </View>
-              <Text style={styles.upNextCta}>Tap to open roadmap →</Text>
-            </View>
-          </TouchableOpacity>
-        ) : !roadmap ? (
-          <TouchableOpacity style={styles.noRoadmapCard} onPress={() => router.push('./career')} activeOpacity={0.82}>
-            <View style={styles.noRoadmapIconWrap}>
-              <Ionicons name="compass-outline" size={28} color={colors.tertiary} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.noRoadmapTitle}>Build your roadmap</Text>
-              <Text style={styles.noRoadmapSub}>Choose a career path to get your AI-powered plan</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={18} color={colors.tertiary} />
-          </TouchableOpacity>
-        ) : (
-          <View style={styles.allDoneCard}>
-            <Ionicons name="trophy" size={24} color="#F59E0B" />
-            <View style={{ flex: 1 }}>
-              <Text style={styles.allDoneTitle}>All milestones complete! 🎉</Text>
-              <Text style={styles.allDoneSub}>Ready for the next step in your career.</Text>
-            </View>
-          </View>
-        )}
+        </AnimatedFadeIn>
 
         {/* Quick actions */}
-        <Text style={styles.sectionLabel}>Quick Access</Text>
-        <View style={styles.quickLinkGrid}>
+        <AnimatedFadeIn delay={150} duration={400}>
+          <Text style={styles.sectionLabel}>Quick Access</Text>
+        </AnimatedFadeIn>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.quickLinkGrid}>
           {[
             {
               icon: 'compass-outline' as const,
-              label: 'Career',
+              label: 'Explore',
               color: colors.secondary,
               roles: ['STUDENT', 'ALUMNI'],
               onPress: () => router.push('./career'),
@@ -324,18 +267,151 @@ export default function DashboardScreen() {
             },
           ]
             .filter(link => !user?.role || link.roles.includes(user.role))
-            .map(link => (
+            .map((link, idx) => (
               <QuickLink
                 key={link.label}
                 icon={link.icon}
                 label={link.label}
                 color={link.color}
                 onPress={link.onPress}
+                index={idx}
               />
             ))}
-        </View>
+        </ScrollView>
 
-      </ScrollView>
+        {/* Hero progress card */}
+        <AnimatedFadeIn delay={200} duration={450}>
+          <View style={styles.heroCard}>
+            {/* Top row */}
+            <View style={styles.heroTop}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.heroEyebrow}>CAREER READINESS</Text>
+                {loadingRoadmap ? (
+                  <Skeleton width="60%" height={22} style={{ marginTop: spacing.xs }} />
+                ) : roadmap ? (
+                  <Text style={styles.heroCareerPath} numberOfLines={1}>{roadmap.careerPath}</Text>
+                ) : (
+                  <Text style={styles.heroCareerPathMuted}>No roadmap yet</Text>
+                )}
+              </View>
+              <View style={styles.heroScoreBadge}>
+                <Text style={styles.heroScoreNum}>{progress}</Text>
+                <Text style={styles.heroScorePct}>%</Text>
+              </View>
+            </View>
+
+            {/* Animated Progress bar */}
+            <View style={styles.heroProgressTrack}>
+              <Animated.View style={[styles.heroProgressFill, { width: animatedWidth }]} />
+            </View>
+
+            {/* Stats strip */}
+            <View style={styles.heroStats}>
+              <View style={styles.heroStat}>
+                <Text style={styles.heroStatValue}>{loadingRoadmap ? '—' : doneCount}</Text>
+                <Text style={styles.heroStatLabel}>Completed</Text>
+              </View>
+              <View style={styles.heroStatDivider} />
+              <View style={styles.heroStat}>
+                <Text style={styles.heroStatValue}>{loadingRoadmap ? '—' : totalCount}</Text>
+                <Text style={styles.heroStatLabel}>Milestones</Text>
+              </View>
+              <View style={styles.heroStatDivider} />
+              <View style={styles.heroStat}>
+                <Text style={styles.heroStatValue}>{loadingRoadmap ? '—' : (totalCount - doneCount)}</Text>
+                <Text style={styles.heroStatLabel}>Remaining</Text>
+              </View>
+            </View>
+          </View>
+        </AnimatedFadeIn>
+
+        {/* Up Next card */}
+        {loadingRoadmap ? (
+          <AnimatedFadeIn delay={300} duration={400}>
+            <View style={styles.upNextCard}>
+              <Skeleton width={120} height={14} style={{ marginBottom: spacing.sm }} />
+              <Skeleton width="75%" height={22} style={{ marginBottom: spacing.xs }} />
+              <Skeleton width="90%" height={14} />
+            </View>
+          </AnimatedFadeIn>
+        ) : remainingMilestones.length > 0 ? (
+          <AnimatedFadeIn delay={300} duration={450}>
+            <ScrollView
+              horizontal
+              pagingEnabled
+              showsHorizontalScrollIndicator={false}
+              snapToInterval={SCREEN_WIDTH - spacing.md * 2}
+              decelerationRate="fast"
+              style={{ marginHorizontal: -spacing.md }}
+              contentContainerStyle={{ paddingHorizontal: spacing.md }}
+            >
+              {remainingMilestones.map((milestone, idx) => {
+                const cfg = TYPE_CONFIG[milestone.type] ?? TYPE_CONFIG.SKILL;
+                return (
+                  <TouchableOpacity
+                    key={milestone.id}
+                    style={[
+                      styles.upNextCard,
+                      {
+                        width: SCREEN_WIDTH - spacing.md * 2 - spacing.sm,
+                        marginRight: idx === remainingMilestones.length - 1 ? 0 : spacing.sm
+                      }
+                    ]}
+                    onPress={() => router.push('./career')}
+                    activeOpacity={0.82}
+                  >
+                    <View style={styles.upNextHeader}>
+                      <View style={styles.upNextLive}>
+                        {idx === 0 && <Animated.View style={[styles.upNextDot, { opacity: pulseOpacity }]} />}
+                        <Text style={styles.upNextEyebrow}>
+                          {idx === 0 ? 'UP NEXT · ' : 'UPCOMING · '}
+                          {user?.role === 'ALUMNI' ? `PHASE ${milestone.semester}` : `SEMESTER ${milestone.semester}`}
+                        </Text>
+                      </View>
+                      <Ionicons name="arrow-forward" size={16} color={colors.tertiary} />
+                    </View>
+
+                    <Text style={styles.upNextTitle}>{milestone.title}</Text>
+                    {milestone.description ? (
+                      <Text style={styles.upNextDesc} numberOfLines={2}>{milestone.description}</Text>
+                    ) : null}
+
+                    <View style={styles.upNextFooter}>
+                      <View style={[styles.upNextTypeBadge, { backgroundColor: `${cfg.color}15`, borderColor: `${cfg.color}35` }]}>
+                        <Ionicons name={cfg.icon} size={11} color={cfg.color} />
+                        <Text style={[styles.upNextTypeText, { color: cfg.color }]}>{cfg.label}</Text>
+                      </View>
+                      <Text style={styles.upNextCta}>Tap to open roadmap →</Text>
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          </AnimatedFadeIn>
+        ) : !roadmap ? (
+          <TouchableOpacity style={styles.noRoadmapCard} onPress={() => router.push('./career')} activeOpacity={0.82}>
+            <View style={styles.noRoadmapIconWrap}>
+              <Ionicons name="compass-outline" size={28} color={colors.tertiary} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.noRoadmapTitle}>Build your roadmap</Text>
+              <Text style={styles.noRoadmapSub}>Choose a career path to get your AI-powered plan</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={colors.tertiary} />
+          </TouchableOpacity>
+        ) : (
+          <View style={styles.allDoneCard}>
+            <Ionicons name="trophy" size={24} color="#F59E0B" />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.allDoneTitle}>All milestones complete! 🎉</Text>
+              <Text style={styles.allDoneSub}>Ready for the next step in your career.</Text>
+            </View>
+          </View>
+        )}
+
+
+
+      </View>
     </SafeAreaView>
   );
 }
@@ -349,20 +425,35 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm + 2,
-    backgroundColor: '#000000',
-    borderBottomWidth: 1,
-    borderBottomColor: '#1F2937',
+    paddingVertical: spacing.md,
+    backgroundColor: colors.surface, // Blend with background
+    borderBottomWidth: 0,
   },
-  headerLogo: {
-    width: 160,
-    height: 48,
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  headerLogoMark: {
+    width: 36,
+    height: 36,
+    borderRadius: radius.md,
+    backgroundColor: colors.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  headerBrandTitle: {
+    ...typography.headlineSm,
+    color: colors.primary,
+    fontSize: 20,
   },
   headerBtn: {
     width: 40,
     height: 40,
     borderRadius: radius.full,
-    backgroundColor: '#1F2937',
+    backgroundColor: colors.surfaceContainerLow,
+    borderWidth: 1,
+    borderColor: colors.outlineVariant,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -384,7 +475,7 @@ const styles = StyleSheet.create({
     fontSize: 10,
   },
 
-  scrollContent: { padding: spacing.lg, paddingBottom: spacing.xxl + 24 },
+  scrollContent: { padding: spacing.lg, paddingBottom: spacing.xxl + 130 },
 
   /* Greeting */
   greetingRow: {
@@ -410,10 +501,17 @@ const styles = StyleSheet.create({
 
   /* Hero card */
   heroCard: {
-    backgroundColor: colors.primary,
+    backgroundColor: '#000000',
     borderRadius: radius.xl,
-    padding: spacing.lg,
-    marginBottom: spacing.md,
+    padding: spacing.md,
+    marginBottom: spacing.xs,
+    borderWidth: 1,
+    borderColor: '#262626',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.35,
+    shadowRadius: 12,
+    elevation: 5,
   },
   heroTop: {
     flexDirection: 'row',
@@ -462,8 +560,8 @@ const styles = StyleSheet.create({
     marginLeft: 2,
   },
   heroProgressTrack: {
-    height: 6,
-    backgroundColor: 'rgba(255,255,255,0.15)',
+    height: 8,
+    backgroundColor: '#262626',
     borderRadius: radius.full,
     overflow: 'hidden',
     marginBottom: spacing.lg,
@@ -475,7 +573,7 @@ const styles = StyleSheet.create({
   },
   heroStats: {
     flexDirection: 'row',
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    backgroundColor: '#171717',
     borderRadius: radius.lg,
     paddingVertical: spacing.md,
   },
@@ -493,8 +591,8 @@ const styles = StyleSheet.create({
   upNextCard: {
     backgroundColor: colors.surfaceCard,
     borderRadius: radius.xl,
-    padding: spacing.lg,
-    marginBottom: spacing.lg,
+    padding: spacing.md,
+    marginBottom: spacing.xs,
     borderWidth: 1.5,
     borderColor: `${colors.tertiary}40`,
     shadowColor: colors.tertiary,
@@ -616,29 +714,32 @@ const styles = StyleSheet.create({
   },
   quickLinkGrid: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
     gap: spacing.sm,
-    marginBottom: spacing.lg,
+    marginBottom: spacing.sm,
+    paddingHorizontal: 4, // for shadow clipping
   },
   quickLink: {
-    width: '23%',
-    minWidth: '23%',
+    width: 80,
     alignItems: 'center',
-    gap: spacing.sm,
+    justifyContent: 'center',
+    gap: 4,
     backgroundColor: colors.surfaceCard,
-    borderRadius: radius.lg,
-    paddingVertical: spacing.md,
+    borderRadius: radius.md,
+    paddingVertical: spacing.sm,
     paddingHorizontal: spacing.xs,
     borderWidth: 1,
     borderColor: colors.outlineVariant,
-    marginBottom: spacing.sm,
-    minHeight: 88,
+    minHeight: 76,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    elevation: 1,
   },
   quickLinkIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: radius.full,
+    width: 40,
+    height: 40,
+    borderRadius: 16,
     justifyContent: 'center',
     alignItems: 'center',
   },

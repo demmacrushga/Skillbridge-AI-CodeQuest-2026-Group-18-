@@ -19,14 +19,15 @@ import { colors, typography, spacing, radius } from '@/constants/theme';
 import { getCareerPaths, generateRoadmap, getRoadmap, completeMilestone } from '@/services/career';
 import { type CareerPath, type Milestone, type Roadmap } from '@/types/career';
 import { type UserRole } from '@/services/auth';
+import { AnimatedFadeIn } from '@/components/ui/AnimatedView';
 
 // ─── Roadmap type config ──────────────────────────────────────────────────────
 
 const TYPE_CONFIG: Record<Milestone['type'], { icon: keyof typeof Ionicons.glyphMap; color: string; label: string }> = {
-  SKILL:      { icon: 'book-outline',        color: colors.tertiary,          label: 'Skill' },
-  PROJECT:    { icon: 'code-slash-outline',   color: colors.secondary,         label: 'Project' },
-  CERT:       { icon: 'trophy-outline',       color: '#B45309',                label: 'Cert' },
-  EXPERIENCE: { icon: 'briefcase-outline',    color: colors.onSurfaceVariant,  label: 'Exp' },
+  SKILL: { icon: 'book-outline', color: colors.tertiary, label: 'Skill' },
+  PROJECT: { icon: 'code-slash-outline', color: colors.secondary, label: 'Project' },
+  CERT: { icon: 'trophy-outline', color: '#B45309', label: 'Cert' },
+  EXPERIENCE: { icon: 'briefcase-outline', color: colors.onSurfaceVariant, label: 'Exp' },
 };
 
 // ─── Career path picker config ────────────────────────────────────────────────
@@ -38,11 +39,11 @@ interface PathMeta {
 }
 
 const PATH_META: Record<string, PathMeta> = {
-  'Software Engineer':   { icon: 'code-slash-outline',  color: colors.tertiary,         demand: 'High Demand' },
-  'Data Analyst':        { icon: 'bar-chart-outline',   color: colors.secondary,        demand: 'Fastest Growing' },
-  'Accountant':          { icon: 'calculator-outline',  color: colors.onSurfaceVariant, demand: 'Evergreen' },
-  'Electrical Engineer': { icon: 'flash-outline',       color: colors.tertiary,         demand: 'High Demand' },
-  'Civil Engineer':      { icon: 'construct-outline',   color: colors.onSurfaceVariant, demand: 'Stable' },
+  'Software Engineer': { icon: 'code-slash-outline', color: colors.tertiary, demand: 'High Demand' },
+  'Data Analyst': { icon: 'bar-chart-outline', color: colors.secondary, demand: 'Fastest Growing' },
+  'Accountant': { icon: 'calculator-outline', color: colors.onSurfaceVariant, demand: 'Evergreen' },
+  'Electrical Engineer': { icon: 'flash-outline', color: colors.tertiary, demand: 'High Demand' },
+  'Civil Engineer': { icon: 'construct-outline', color: colors.onSurfaceVariant, demand: 'Stable' },
 };
 
 function getPathMeta(name: string): PathMeta {
@@ -125,6 +126,7 @@ function GeneratingOverlay({ careerPath, role }: { careerPath: string; role: Ext
   const steps = GENERATING_STEPS_BY_ROLE[role];
   const fadeAnim = useRef(new Animated.Value(1)).current;
   const dotAnim = useRef(new Animated.Value(0)).current;
+  const jumpAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -132,7 +134,7 @@ function GeneratingOverlay({ careerPath, role }: { careerPath: string; role: Ext
         setStepIdx(i => Math.min(i + 1, steps.length - 1));
         Animated.timing(fadeAnim, { toValue: 1, duration: 300, useNativeDriver: true }).start();
       });
-    }, 18000);
+    }, 3500);
 
     Animated.loop(
       Animated.sequence([
@@ -141,21 +143,22 @@ function GeneratingOverlay({ careerPath, role }: { careerPath: string; role: Ext
       ])
     ).start();
 
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(jumpAnim, { toValue: -20, duration: 400, useNativeDriver: true }),
+        Animated.timing(jumpAnim, { toValue: 0, duration: 400, useNativeDriver: true }),
+      ])
+    ).start();
+
     return () => clearInterval(interval);
-  }, [fadeAnim, dotAnim]);
+  }, [fadeAnim, dotAnim, jumpAnim, steps.length]);
 
   return (
     <SafeAreaView style={styles.generatingContainer}>
       <View style={styles.generatingVisual}>
-        <View style={styles.ring3}>
-          <View style={styles.ring2}>
-            <View style={styles.ring1}>
-              <View style={styles.ringCore}>
-                <Ionicons name="sparkles" size={32} color={colors.onPrimary} />
-              </View>
-            </View>
-          </View>
-        </View>
+        <Animated.View style={[styles.generatingIconWrap, { transform: [{ translateY: jumpAnim }] }]}>
+          <Ionicons name="sparkles" size={42} color={colors.tertiary} />
+        </Animated.View>
       </View>
       <Text style={styles.generatingTitle}>Building your roadmap</Text>
       <Text style={styles.generatingPath}>{careerPath}</Text>
@@ -406,6 +409,7 @@ export default function CareerScreen() {
   const [level, setLevel] = useState(levels[1].value);
   const [skills, setSkills] = useState<string[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [wizardStep, setWizardStep] = useState<1 | 2 | 3>(1);
   const [generateError, setGenerateError] = useState<string | null>(null);
 
   // Roadmap state
@@ -417,7 +421,7 @@ export default function CareerScreen() {
   useEffect(() => {
     getCareerPaths()
       .then(setPaths)
-      .catch(() => {})
+      .catch(() => { })
       .finally(() => setLoadingPaths(false));
   }, []);
 
@@ -496,20 +500,33 @@ export default function CareerScreen() {
   }
 
   async function handleComplete(milestoneId: string) {
-    if (!state.accessToken) return;
+    if (!state.accessToken || !state.user?.id) return;
     setCompletingId(milestoneId);
     try {
-      const updated = await completeMilestone(state.accessToken, milestoneId, {
+      const updated = await completeMilestone(state.accessToken, milestoneId, state.user.id, {
         evidenceNote: noteMap[milestoneId]?.trim() || undefined,
       });
       setNoteMap(prev => { const n = { ...prev }; delete n[milestoneId]; return n; });
-      setRoadmap(prev =>
-        prev ? {
+      setRoadmap(prev => {
+        if (!prev) return null;
+        const nextMilestones = prev.milestones.map(m => m.id === milestoneId ? { ...m, completed: true } : m);
+        const currentSemMilestones = nextMilestones.filter(m => m.semester === selectedSemester);
+        const semAllDone = currentSemMilestones.every(m => m.completed);
+
+        if (semAllDone) {
+          const sems = [...new Set(nextMilestones.map(m => m.semester))].sort((a, b) => a - b);
+          const currentIdx = sems.indexOf(selectedSemester);
+          if (currentIdx >= 0 && currentIdx < sems.length - 1) {
+            setTimeout(() => setSelectedSemester(sems[currentIdx + 1]), 300);
+          }
+        }
+
+        return {
           ...prev,
           progressPercent: updated.progressPercent,
-          milestones: prev.milestones.map(m => m.id === milestoneId ? { ...m, completed: true } : m),
-        } : null
-      );
+          milestones: nextMilestones,
+        };
+      });
     } catch (e: unknown) {
       const err = e as { message?: string };
       Alert.alert('Error', err.message ?? 'Failed to complete milestone');
@@ -582,10 +599,16 @@ export default function CareerScreen() {
             </View>
             <Text style={styles.pickerHeaderTitle}>Career</Text>
           </View>
-          {changingPath && (
-            <TouchableOpacity onPress={() => setChangingPath(false)} style={styles.headerLink}>
-              <Text style={styles.headerLinkText}>Back to roadmap</Text>
-              <Ionicons name="chevron-forward" size={14} color={colors.tertiary} />
+          {(changingPath || wizardStep > 1) && (
+            <TouchableOpacity
+              onPress={() => {
+                if (wizardStep > 1) setWizardStep(prev => (prev - 1) as 1 | 2 | 3);
+                else setChangingPath(false);
+              }}
+              style={styles.headerLink}
+            >
+              <Ionicons name="chevron-back" size={14} color={colors.tertiary} />
+              <Text style={styles.headerLinkText}>{wizardStep > 1 ? 'Back' : 'Back to roadmap'}</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -595,14 +618,14 @@ export default function CareerScreen() {
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-          <View style={styles.hero}>
+          <AnimatedFadeIn style={styles.heroCard} delay={100}>
             <Text style={styles.heroTitle}>Build your{'\n'}career roadmap</Text>
             <Text style={styles.heroSubtitle}>
               {role === 'ALUMNI'
                 ? 'AI-powered career milestones — tailored to your professional stage.'
                 : 'AI-powered, semester-by-semester — tailored to you at KNUST.'}
             </Text>
-          </View>
+          </AnimatedFadeIn>
 
           {generateError && (
             <View style={styles.errorBanner}>
@@ -611,118 +634,155 @@ export default function CareerScreen() {
             </View>
           )}
 
-          <View style={styles.stepHeader}>
-            <View style={styles.stepNum}><Text style={styles.stepNumText}>1</Text></View>
-            <Text style={styles.stepTitle}>Choose your career path</Text>
-          </View>
+          {wizardStep === 1 && (
+            <>
+              <View style={styles.stepHeader}>
+                <View style={styles.stepNum}><Text style={styles.stepNumText}>1</Text></View>
+                <Text style={styles.stepTitle}>Choose your career path</Text>
+              </View>
 
-          {loadingPaths ? (
-            <ActivityIndicator style={{ marginVertical: spacing.lg }} color={colors.secondary} />
-          ) : (
-            <View style={styles.pathGrid}>
-              {pathRows.map((row, ri) => (
-                <View key={ri} style={styles.pathRow}>
-                  {row.map(path => {
-                    const meta = getPathMeta(path.name);
-                    const isSelected = selectedPath?.id === path.id;
-                    return (
-                      <TouchableOpacity
-                        key={path.id}
-                        style={[styles.pathCard, isSelected && { backgroundColor: meta.color, borderColor: meta.color }]}
-                        onPress={() => setSelectedPath(isSelected ? null : path)}
-                        activeOpacity={0.8}
-                      >
-                        <View style={[styles.pathIconWrap, { backgroundColor: isSelected ? 'rgba(255,255,255,0.2)' : `${meta.color}15` }]}>
-                          <Ionicons name={meta.icon} size={26} color={isSelected ? colors.onPrimary : meta.color} />
-                        </View>
-                        <Text style={[styles.pathName, isSelected && styles.pathNameSelected]} numberOfLines={2}>
-                          {path.name}
-                        </Text>
-                        <View style={[styles.demandPill, isSelected ? { backgroundColor: 'rgba(255,255,255,0.2)' } : { backgroundColor: `${meta.color}12` }]}>
-                          <Text style={[styles.demandText, { color: isSelected ? colors.onPrimary : meta.color }]}>
-                            {meta.demand}
-                          </Text>
-                        </View>
-                        {isSelected && (
-                          <View style={styles.pathCheckmark}>
-                            <Ionicons name="checkmark-circle" size={18} color={colors.onPrimary} />
-                          </View>
-                        )}
-                      </TouchableOpacity>
-                    );
-                  })}
-                  {row.length === 1 && <View style={styles.pathCardPlaceholder} />}
+              {loadingPaths ? (
+                <ActivityIndicator style={{ marginVertical: spacing.lg }} color={colors.secondary} />
+              ) : (
+                <View style={styles.pathGrid}>
+                  {pathRows.map((row, ri) => (
+                    <View key={ri} style={styles.pathRow}>
+                      {row.map(path => {
+                        const meta = getPathMeta(path.name);
+                        const isSelected = selectedPath?.id === path.id;
+                        return (
+                          <TouchableOpacity
+                            key={path.id}
+                            style={[styles.pathCard, isSelected && { backgroundColor: meta.color, borderColor: meta.color }]}
+                            onPress={() => {
+                              setSelectedPath(isSelected ? null : path);
+                              if (!isSelected) {
+                                setTimeout(() => setWizardStep(2), 250);
+                              }
+                            }}
+                            activeOpacity={0.8}
+                          >
+                            <View style={[styles.pathIconWrap, { backgroundColor: isSelected ? 'rgba(255,255,255,0.2)' : `${meta.color}15` }]}>
+                              <Ionicons name={meta.icon} size={26} color={isSelected ? colors.onPrimary : meta.color} />
+                            </View>
+                            <Text style={[styles.pathName, isSelected && styles.pathNameSelected]} numberOfLines={2}>
+                              {path.name}
+                            </Text>
+                            <View style={[styles.demandPill, isSelected ? { backgroundColor: 'rgba(255,255,255,0.2)' } : { backgroundColor: `${meta.color}12` }]}>
+                              <Text style={[styles.demandText, { color: isSelected ? colors.onPrimary : meta.color }]}>
+                                {meta.demand}
+                              </Text>
+                            </View>
+                            {isSelected && (
+                              <View style={styles.pathCheckmark}>
+                                <Ionicons name="checkmark-circle" size={18} color={colors.onPrimary} />
+                              </View>
+                            )}
+                          </TouchableOpacity>
+                        );
+                      })}
+                      {row.length === 1 && <View style={styles.pathCardPlaceholder} />}
+                    </View>
+                  ))}
                 </View>
-              ))}
-            </View>
+              )}
+
+              <TouchableOpacity
+                style={[styles.generateBtn, !canGenerate && styles.generateBtnDisabled, { marginTop: spacing.xl }]}
+                onPress={() => setWizardStep(2)}
+                disabled={!canGenerate}
+                activeOpacity={0.85}
+              >
+                <View>
+                  <Text style={styles.generateBtnText}>Continue to Step 2</Text>
+                </View>
+                <Ionicons name="arrow-forward" size={18} color={colors.onPrimary} style={{ marginLeft: 'auto' }} />
+              </TouchableOpacity>
+              {!canGenerate && <Text style={styles.generateHint}>Select a career path to continue</Text>}
+            </>
           )}
 
-          <View style={styles.stepHeader}>
-            <View style={styles.stepNum}><Text style={styles.stepNumText}>2</Text></View>
-            <Text style={styles.stepTitle}>{role === 'ALUMNI' ? 'Your career stage' : 'Your academic level'}</Text>
-          </View>
+          {wizardStep === 2 && (
+            <>
+              <View style={styles.stepHeader}>
+                <View style={styles.stepNum}><Text style={styles.stepNumText}>2</Text></View>
+                <Text style={styles.stepTitle}>{role === 'ALUMNI' ? 'Your career stage' : 'Your academic level'}</Text>
+              </View>
 
-          <View style={styles.levelTrack}>
-            {levels.map((l, idx) => {
-              const isSelected = level === l.value;
-              const isPast = role === 'STUDENT' && levels.findIndex(x => x.value === level) > idx;
-              return (
-                <View key={l.value} style={styles.levelStep}>
-                  {idx < levels.length - 1 && (
-                    <View style={[styles.levelConnector, (isSelected || isPast) && role === 'STUDENT' && styles.levelConnectorActive]} />
-                  )}
-                  <TouchableOpacity
-                    style={[styles.levelNode, isSelected && styles.levelNodeSelected, isPast && styles.levelNodePast]}
-                    onPress={() => setLevel(l.value)}
-                  >
-                    {isPast
-                      ? <Ionicons name="checkmark" size={14} color={colors.onPrimary} />
-                      : <Text style={[styles.levelNodeText, isSelected && styles.levelNodeTextSelected]}>{l.label}</Text>
-                    }
-                  </TouchableOpacity>
-                  <Text style={[styles.levelYear, isSelected && styles.levelYearSelected]}>{l.sublabel}</Text>
+              <View style={styles.levelTrack}>
+                {levels.map((l, idx) => {
+                  const isSelected = level === l.value;
+                  const isPast = role === 'STUDENT' && levels.findIndex(x => x.value === level) > idx;
+                  return (
+                    <View key={l.value} style={styles.levelStep}>
+                      {idx < levels.length - 1 && (
+                        <View style={[styles.levelConnector, (isSelected || isPast) && role === 'STUDENT' && styles.levelConnectorActive]} />
+                      )}
+                      <TouchableOpacity
+                        style={[styles.levelNode, isSelected && styles.levelNodeSelected, isPast && styles.levelNodePast]}
+                        onPress={() => setLevel(l.value)}
+                      >
+                        {isPast
+                          ? <Ionicons name="checkmark" size={14} color={colors.onPrimary} />
+                          : <Text style={[styles.levelNodeText, isSelected && styles.levelNodeTextSelected]}>{l.label}</Text>
+                        }
+                      </TouchableOpacity>
+                      <Text style={[styles.levelYear, isSelected && styles.levelYearSelected]}>{l.sublabel}</Text>
+                    </View>
+                  );
+                })}
+              </View>
+
+              <View style={[styles.levelContextCard, { borderColor: colors.outlineVariant }]}>
+                <Ionicons name="information-circle-outline" size={15} color={colors.onSurfaceVariant} />
+                <Text style={styles.levelContextText}>
+                  {role === 'ALUMNI'
+                    ? <>We'll tailor milestones for an <Text style={{ color: colors.primary, fontFamily: 'Inter_500Medium' }}>{levels.find(l2 => l2.value === level)?.sublabel ?? level}</Text> professional.</>
+                    : <>We'll generate milestones from <Text style={{ color: colors.primary, fontFamily: 'Inter_500Medium' }}>{levels.find(l2 => l2.value === level)?.sublabel ?? level}</Text> onwards — skipping semesters you've already completed.</>}
+                </Text>
+              </View>
+
+              <TouchableOpacity
+                style={[styles.generateBtn, { marginTop: spacing.xl }]}
+                onPress={() => setWizardStep(3)}
+                activeOpacity={0.85}
+              >
+                <View>
+                  <Text style={styles.generateBtnText}>Continue to Step 3</Text>
                 </View>
-              );
-            })}
-          </View>
+                <Ionicons name="arrow-forward" size={18} color={colors.onPrimary} style={{ marginLeft: 'auto' }} />
+              </TouchableOpacity>
+            </>
+          )}
 
-          <View style={[styles.levelContextCard, { borderColor: colors.outlineVariant }]}>
-            <Ionicons name="information-circle-outline" size={15} color={colors.onSurfaceVariant} />
-            <Text style={styles.levelContextText}>
-              {role === 'ALUMNI'
-                ? <>We'll tailor milestones for an <Text style={{ color: colors.primary, fontFamily: 'Inter_500Medium' }}>{levels.find(l2 => l2.value === level)?.sublabel ?? level}</Text> professional.</>
-                : <>We'll generate milestones from <Text style={{ color: colors.primary, fontFamily: 'Inter_500Medium' }}>{levels.find(l2 => l2.value === level)?.sublabel ?? level}</Text> onwards — skipping semesters you've already completed.</>}
-            </Text>
-          </View>
+          {wizardStep === 3 && (
+            <>
+              <View style={styles.stepHeader}>
+                <View style={styles.stepNum}><Text style={styles.stepNumText}>3</Text></View>
+                <Text style={styles.stepTitle}>Your current skills</Text>
+              </View>
 
-          <View style={styles.stepHeader}>
-            <View style={styles.stepNum}><Text style={styles.stepNumText}>3</Text></View>
-            <Text style={styles.stepTitle}>Your current skills</Text>
-          </View>
+              <SkillTags skills={skills} onChange={setSkills} />
+              <Text style={styles.inputHint}>
+                Type a skill and press comma or return to add it. The AI uses these to personalise your milestones.
+              </Text>
 
-          <SkillTags skills={skills} onChange={setSkills} />
-          <Text style={styles.inputHint}>
-            Type a skill and press comma or return to add it. The AI uses these to personalise your milestones.
-          </Text>
-
-          <TouchableOpacity
-            style={[styles.generateBtn, !canGenerate && styles.generateBtnDisabled]}
-            onPress={handleGenerate}
-            disabled={!canGenerate}
-            activeOpacity={0.85}
-          >
-            <Ionicons name="sparkles" size={19} color={colors.onPrimary} />
-            <View>
-              <Text style={styles.generateBtnText}>Generate My Roadmap</Text>
-              {selectedPath && (
-                <Text style={styles.generateBtnSub}>{selectedPath.name} · {level}</Text>
-              )}
-            </View>
-            <Ionicons name="arrow-forward" size={18} color={colors.onPrimary} style={{ marginLeft: 'auto' }} />
-          </TouchableOpacity>
-
-          {!canGenerate && (
-            <Text style={styles.generateHint}>Select a career path above to continue</Text>
+              <TouchableOpacity
+                style={[styles.generateBtn, !canGenerate && styles.generateBtnDisabled, { marginTop: spacing.xl }]}
+                onPress={handleGenerate}
+                disabled={!canGenerate}
+                activeOpacity={0.85}
+              >
+                <Ionicons name="sparkles" size={19} color={colors.onPrimary} />
+                <View>
+                  <Text style={styles.generateBtnText}>Generate My Roadmap</Text>
+                  {selectedPath && (
+                    <Text style={styles.generateBtnSub}>{selectedPath.name} · {level}</Text>
+                  )}
+                </View>
+                <Ionicons name="arrow-forward" size={18} color={colors.onPrimary} style={{ marginLeft: 'auto' }} />
+              </TouchableOpacity>
+            </>
           )}
         </ScrollView>
       </SafeAreaView>
@@ -837,34 +897,46 @@ export default function CareerScreen() {
           ))}
         </View>
 
-        <View style={styles.milestoneList}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.horizontalMilestoneScroll}
+          decelerationRate="fast"
+          snapToInterval={310}
+        >
           {currentMilestones.map(milestone => {
-            if (milestone.completed) return <CompletedRow key={milestone.id} milestone={milestone} />;
+            if (milestone.completed) return (
+              <View key={milestone.id} style={styles.cardContainerHorizontal}>
+                <CompletedRow milestone={milestone} />
+              </View>
+            );
             if (milestone.id === firstIncompleteId) {
               return (
-                <UpNextCard
-                  key={milestone.id}
+                <View key={milestone.id} style={styles.cardContainerHorizontal}>
+                  <UpNextCard
+                    milestone={milestone}
+                    onComplete={() => handleComplete(milestone.id)}
+                    completing={completingId === milestone.id}
+                    noteValue={noteMap[milestone.id] ?? ''}
+                    onNoteChange={text => setNoteMap(prev => ({ ...prev, [milestone.id]: text }))}
+                    pulseOpacity={pulseOpacity}
+                  />
+                </View>
+              );
+            }
+            return (
+              <View key={milestone.id} style={styles.cardContainerHorizontal}>
+                <UpcomingCard
                   milestone={milestone}
                   onComplete={() => handleComplete(milestone.id)}
                   completing={completingId === milestone.id}
                   noteValue={noteMap[milestone.id] ?? ''}
                   onNoteChange={text => setNoteMap(prev => ({ ...prev, [milestone.id]: text }))}
-                  pulseOpacity={pulseOpacity}
                 />
-              );
-            }
-            return (
-              <UpcomingCard
-                key={milestone.id}
-                milestone={milestone}
-                onComplete={() => handleComplete(milestone.id)}
-                completing={completingId === milestone.id}
-                noteValue={noteMap[milestone.id] ?? ''}
-                onNoteChange={text => setNoteMap(prev => ({ ...prev, [milestone.id]: text }))}
-              />
+              </View>
             );
           })}
-        </View>
+        </ScrollView>
 
         <View style={styles.semNav}>
           <TouchableOpacity
@@ -872,7 +944,7 @@ export default function CareerScreen() {
             onPress={() => currentIdx > 0 && setSelectedSemester(semesters[currentIdx - 1])}
             disabled={currentIdx === 0}
           >
-            <Ionicons name="chevron-back" size={17} color={currentIdx === 0 ? colors.outline : colors.primary} />
+            <Ionicons name="chevron-back" size={17} color={currentIdx === 0 ? colors.outline : colors.onPrimary} />
             <Text style={[styles.navBtnText, currentIdx === 0 && styles.navBtnTextDisabled]}>Prev</Text>
           </TouchableOpacity>
           <Text style={styles.navPageText}>{currentIdx + 1} / {semesters.length}</Text>
@@ -882,7 +954,7 @@ export default function CareerScreen() {
             disabled={currentIdx === semesters.length - 1}
           >
             <Text style={[styles.navBtnText, currentIdx === semesters.length - 1 && styles.navBtnTextDisabled]}>Next</Text>
-            <Ionicons name="chevron-forward" size={17} color={currentIdx === semesters.length - 1 ? colors.outline : colors.primary} />
+            <Ionicons name="chevron-forward" size={17} color={currentIdx === semesters.length - 1 ? colors.outline : colors.onPrimary} />
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -916,27 +988,24 @@ const styles = StyleSheet.create({
 
   /* Generating overlay */
   generatingContainer: {
-    flex: 1, backgroundColor: colors.primary,
+    flex: 1, backgroundColor: colors.surface,
     justifyContent: 'center', alignItems: 'center', padding: spacing.xl,
   },
   generatingVisual: { marginBottom: spacing.xl },
-  ring3: { width: 160, height: 160, borderRadius: 80, backgroundColor: 'rgba(255,255,255,0.05)', justifyContent: 'center', alignItems: 'center' },
-  ring2: { width: 120, height: 120, borderRadius: 60, backgroundColor: 'rgba(255,255,255,0.08)', justifyContent: 'center', alignItems: 'center' },
-  ring1: { width: 84, height: 84, borderRadius: 42, backgroundColor: 'rgba(255,255,255,0.12)', justifyContent: 'center', alignItems: 'center' },
-  ringCore: { width: 56, height: 56, borderRadius: 28, backgroundColor: colors.secondary, justifyContent: 'center', alignItems: 'center' },
-  generatingTitle: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 26, color: colors.onPrimary, textAlign: 'center', marginBottom: spacing.xs },
-  generatingPath: { fontFamily: 'Inter_500Medium', fontSize: 15, color: colors.secondary, textAlign: 'center', marginBottom: spacing.xl },
-  generatingStep: { ...typography.labelMd, color: 'rgba(255,255,255,0.7)', textAlign: 'center', marginBottom: spacing.lg },
-  generatingNote: { ...typography.bodyMd, fontSize: 13, lineHeight: 20, color: 'rgba(255,255,255,0.4)', textAlign: 'center', marginBottom: spacing.xl },
+  generatingIconWrap: { width: 88, height: 88, borderRadius: 44, backgroundColor: `${colors.tertiary}15`, justifyContent: 'center', alignItems: 'center' },
+  generatingTitle: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 26, color: colors.primary, textAlign: 'center', marginBottom: spacing.xs },
+  generatingPath: { fontFamily: 'Inter_500Medium', fontSize: 15, color: colors.tertiary, textAlign: 'center', marginBottom: spacing.xl },
+  generatingStep: { ...typography.labelMd, color: colors.onSurfaceVariant, textAlign: 'center', marginBottom: spacing.lg },
+  generatingNote: { ...typography.bodyMd, fontSize: 13, lineHeight: 20, color: colors.outline, textAlign: 'center', marginBottom: spacing.xl },
   generatingDots: { flexDirection: 'row', gap: spacing.sm },
-  generatingDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.secondary },
+  generatingDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.tertiary },
 
   /* Picker header */
   pickerHeader: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: spacing.lg, paddingVertical: spacing.sm + 2,
-    backgroundColor: colors.surfaceCard,
-    borderBottomWidth: 1, borderBottomColor: colors.outlineVariant,
+    backgroundColor: colors.surface,
+    borderBottomWidth: 0,
   },
   headerLeft: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   logoMark: { width: 30, height: 30, borderRadius: radius.md, backgroundColor: colors.primary, justifyContent: 'center', alignItems: 'center' },
@@ -945,8 +1014,15 @@ const styles = StyleSheet.create({
   headerLinkText: { ...typography.labelMd, color: colors.tertiary },
 
   /* Picker scroll */
-  scrollContent: { padding: spacing.lg, paddingBottom: spacing.xxl + 24 },
-  hero: { marginBottom: spacing.xl },
+  scrollContent: { padding: spacing.lg, paddingBottom: spacing.xxl + 100 },
+  heroCard: {
+    marginBottom: spacing.xl,
+    backgroundColor: colors.surfaceCard,
+    padding: spacing.xl,
+    borderRadius: radius.xl,
+    borderWidth: 1, borderColor: colors.outlineVariant,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.05, shadowRadius: 12, elevation: 2
+  },
   heroTitle: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 30, lineHeight: 38, color: colors.primary, marginBottom: spacing.sm },
   heroSubtitle: { ...typography.bodyMd, color: colors.onSurfaceVariant, lineHeight: 22 },
 
@@ -1007,19 +1083,19 @@ const styles = StyleSheet.create({
   roadmapHeader: {
     flexDirection: 'row', alignItems: 'center', gap: spacing.md,
     paddingHorizontal: spacing.lg, paddingVertical: spacing.md,
-    backgroundColor: colors.surfaceCard,
-    borderBottomWidth: 1, borderBottomColor: colors.outlineVariant,
+    backgroundColor: colors.surface,
+    borderBottomWidth: 0,
   },
   roadmapHeaderTitle: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 17, color: colors.primary },
   roadmapHeaderSub: { ...typography.labelSm, color: colors.onSurfaceVariant, marginTop: 1 },
   changePathBtn: { width: 38, height: 38, borderRadius: radius.full, backgroundColor: colors.surfaceContainerLow, justifyContent: 'center', alignItems: 'center', flexShrink: 0 },
 
   /* Progress strip */
-  progressStrip: { backgroundColor: colors.primary, paddingHorizontal: spacing.lg, paddingTop: spacing.sm + 2, paddingBottom: spacing.md },
+  progressStrip: { backgroundColor: '#000000', paddingHorizontal: spacing.lg, paddingTop: spacing.sm + 2, paddingBottom: spacing.md },
   progressStripRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.sm },
-  progressStripLabel: { ...typography.labelSm, color: 'rgba(255,255,255,0.6)' },
+  progressStripLabel: { ...typography.labelSm, color: 'rgba(255,255,255,0.85)' },
   progressStripPct: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 15, color: colors.onPrimary },
-  progressTrack: { height: 5, backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: radius.full, overflow: 'hidden' },
+  progressTrack: { height: 8, backgroundColor: '#262626', borderRadius: radius.full, overflow: 'hidden' },
   progressFill: { height: '100%', backgroundColor: colors.secondary, borderRadius: radius.full },
 
   /* Semester tabs */
@@ -1049,6 +1125,8 @@ const styles = StyleSheet.create({
   stepDotActive: { backgroundColor: colors.tertiary },
 
   milestoneList: { gap: spacing.sm },
+  horizontalMilestoneScroll: { gap: spacing.md, paddingBottom: spacing.md, paddingRight: spacing.lg },
+  cardContainerHorizontal: { width: 310 },
 
   /* Completed row */
   completedRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, backgroundColor: colors.surfaceCard, borderRadius: radius.lg, paddingVertical: 12, paddingHorizontal: spacing.md, borderWidth: 1, borderColor: colors.outlineVariant },
@@ -1091,9 +1169,9 @@ const styles = StyleSheet.create({
 
   /* Semester navigation */
   semNav: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: spacing.xl, paddingTop: spacing.md, borderTopWidth: 1, borderTopColor: colors.outlineVariant },
-  navBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: spacing.sm, paddingHorizontal: spacing.md, borderRadius: radius.md, backgroundColor: colors.surfaceCard, borderWidth: 1, borderColor: colors.outlineVariant },
-  navBtnDisabled: { opacity: 0.35 },
-  navBtnText: { ...typography.labelMd, color: colors.primary, fontSize: 13 },
+  navBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: spacing.sm, paddingHorizontal: spacing.md, borderRadius: radius.md, backgroundColor: colors.secondary, shadowColor: colors.secondary, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 4, elevation: 2 },
+  navBtnDisabled: { opacity: 0.35, backgroundColor: colors.surfaceContainerHigh },
+  navBtnText: { ...typography.labelMd, color: colors.onPrimary, fontSize: 13 },
   navBtnTextDisabled: { color: colors.outline },
   navPageText: { ...typography.labelSm, color: colors.onSurfaceVariant },
 });

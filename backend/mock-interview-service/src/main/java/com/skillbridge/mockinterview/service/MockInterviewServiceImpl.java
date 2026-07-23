@@ -33,8 +33,11 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class MockInterviewServiceImpl implements MockInterviewService {
 
-    private static final long MAX_AUDIO_BYTES = 25L * 1024 * 1024;
-    private static final Set<String> ALLOWED_AUDIO_TYPES = Set.of("audio/mpeg", "audio/m4a", "audio/wav");
+    private static final Set<String> ALLOWED_AUDIO_TYPES = Set.of(
+            "audio/mpeg", "audio/mp3", "audio/m4a", "audio/x-m4a", "audio/mp4",
+            "audio/aac", "audio/wav", "audio/x-wav", "audio/webm", "audio/ogg",
+            "audio/3gpp", "audio/caf", "application/octet-stream"
+    );
 
     private final InterviewSessionRepository sessionRepository;
     private final InterviewQuestionRepository questionRepository;
@@ -164,8 +167,8 @@ public class MockInterviewServiceImpl implements MockInterviewService {
             throw new IllegalArgumentException("audio file exceeds 25 MB limit");
         }
         String contentType = audio.getContentType();
-        if (contentType == null || !ALLOWED_AUDIO_TYPES.contains(contentType)) {
-            throw new IllegalArgumentException("audio must be audio/mpeg, audio/m4a, or audio/wav");
+        if (contentType != null && !contentType.isBlank() && !ALLOWED_AUDIO_TYPES.contains(contentType.toLowerCase())) {
+            throw new IllegalArgumentException("audio format not supported: " + contentType);
         }
 
         InterviewSession session = sessionRepository.findByIdAndUserId(sessionId, userId)

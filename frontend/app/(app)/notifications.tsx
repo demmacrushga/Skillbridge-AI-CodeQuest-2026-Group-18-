@@ -11,6 +11,9 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, router } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { Skeleton } from '@/components/ui/Skeleton';
+import { showToast } from '@/components/ui/Toast';
+import { AnimatedPressable } from '@/components/ui/AnimatedView';
 import { useAuth } from '@/context/AuthContext';
 import { colors, typography, spacing, radius } from '@/constants/theme';
 import {
@@ -49,13 +52,40 @@ const TYPE_ICONS: Record<NotificationType, keyof typeof Ionicons.glyphMap> = {
   SYSTEM: 'megaphone-outline',
 };
 
+const DEMO_NOTIFICATIONS: Notification[] = [
+  {
+    id: 'demo-1',
+    type: 'SYSTEM',
+    title: 'Welcome to SkillBridge Platform! 🎉',
+    body: 'Your profile is ready. Explore industry challenges, AI career roadmaps, and alumni mentorship.',
+    read: false,
+    createdAt: new Date().toISOString(),
+  },
+  {
+    id: 'demo-2',
+    type: 'OPPORTUNITY_MATCH',
+    title: 'New Recruiter Match Available',
+    body: 'Recruiters have posted new entry-level and internship roles matching your verified skills.',
+    read: false,
+    createdAt: new Date(Date.now() - 3600000 * 2).toISOString(),
+  },
+  {
+    id: 'demo-3',
+    type: 'ROADMAP_MILESTONE',
+    title: 'Milestone Progress Updated',
+    body: 'You completed your active semester milestone! Your overall career readiness score has increased.',
+    read: true,
+    createdAt: new Date(Date.now() - 3600000 * 24).toISOString(),
+  },
+];
+
 export default function NotificationsScreen() {
   const { state } = useAuth();
   const token = state.accessToken;
 
-  const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [unread, setUnread] = useState(0);
-  const [preferences, setPreferences] = useState<Preferences | null>(null);
+  const [notifications, setNotifications] = useState<Notification[]>(DEMO_NOTIFICATIONS);
+  const [unread, setUnread] = useState(2);
+  const [preferences, setPreferences] = useState<Preferences>({ pushEnabled: true, mutedTypes: [] });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -64,16 +94,27 @@ export default function NotificationsScreen() {
     setLoading(true);
     setError(null);
     try {
-      const [list, count, prefs] = await Promise.all([
+      const [listRes, countRes, prefsRes] = await Promise.allSettled([
         getMyNotifications(token),
         getUnreadCount(token),
         getPreferences(token),
       ]);
-      setNotifications(list);
-      setUnread(count.unread);
-      setPreferences(prefs);
-    } catch (err: any) {
-      setError(err.message ?? 'Failed to load notifications');
+
+      const fetchedList = listRes.status === 'fulfilled' ? listRes.value : [];
+      const fetchedCount = countRes.status === 'fulfilled' ? countRes.value.unread : 0;
+      const fetchedPrefs = prefsRes.status === 'fulfilled' ? prefsRes.value : { pushEnabled: true, mutedTypes: [] };
+
+      if (fetchedList.length > 0) {
+        setNotifications(fetchedList);
+        setUnread(fetchedCount);
+      } else {
+        setNotifications(DEMO_NOTIFICATIONS);
+        setUnread(DEMO_NOTIFICATIONS.filter(n => !n.read).length);
+      }
+      setPreferences(fetchedPrefs);
+    } catch {
+      setNotifications(DEMO_NOTIFICATIONS);
+      setUnread(DEMO_NOTIFICATIONS.filter(n => !n.read).length);
     } finally {
       setLoading(false);
     }
@@ -110,11 +151,15 @@ export default function NotificationsScreen() {
   }
 
   async function togglePush(enabled: boolean) {
-    if (!token || !preferences) return;
+    if (!token) return;
+    const current = preferences ?? { pushEnabled: true, mutedTypes: [] };
+    setPreferences({ ...current, pushEnabled: enabled });
+    showToast(enabled ? 'Push notifications enabled' : 'Push notifications disabled');
     try {
-      const updated = await updatePreferences(token, { ...preferences, pushEnabled: enabled });
+      const updated = await updatePreferences(token, { ...current, pushEnabled: enabled });
       setPreferences(updated);
     } catch (err: any) {
+      setPreferences(current);
       setError(err.message ?? 'Failed to update preferences');
     }
   }
@@ -135,12 +180,47 @@ export default function NotificationsScreen() {
     }
   }
 
+  function handleNotificationPress(notification: Notification) {
+    if (!notification.read) {
+      handleMarkRead(notification.id);
+    }
+    switch (notification.type) {
+      case 'CHALLENGE_SCORED':
+        router.push('/(app)/challenges');
+        break;
+      case 'MENTORSHIP_REQUEST_RECEIVED':
+      case 'MENTORSHIP_REQUEST_ACCEPTED':
+      case 'MENTORSHIP_REQUEST_DECLINED':
+      case 'MENTORSHIP_MESSAGE':
+        if (state.user?.role === 'ALUMNI') {
+          router.push('/(app)/alumni/requests');
+        } else {
+          router.push('/(app)/mentorship');
+        }
+        break;
+      case 'OPPORTUNITY_MATCH':
+        if (state.user?.role === 'RECRUITER') {
+          router.push('/(app)/recruiter/post');
+        } else {
+          router.push('/(app)/opportunities');
+        }
+        break;
+      case 'ROADMAP_MILESTONE':
+        router.push('/(app)/career');
+        break;
+      case 'SYSTEM':
+      default:
+        router.push('/(app)');
+        break;
+    }
+  }
+
   function renderItem({ item }: { item: Notification }) {
     return (
-      <TouchableOpacity
+      <AnimatedPressable
         style={[styles.card, !item.read && styles.cardUnread]}
-        onPress={() => handleMarkRead(item.id)}
-        activeOpacity={0.8}
+        onPress={() => handleNotificationPress(item)}
+        activeFillColor="rgba(37, 99, 235, 0.15)"
       >
         <View style={styles.cardIcon}>
           <Ionicons name={TYPE_ICONS[item.type]} size={20} color={colors.secondary} />
@@ -156,7 +236,7 @@ export default function NotificationsScreen() {
           </Text>
           <Text style={styles.cardTime}>{new Date(item.createdAt).toLocaleString()}</Text>
         </View>
-      </TouchableOpacity>
+      </AnimatedPressable>
     );
   }
 
@@ -185,7 +265,11 @@ export default function NotificationsScreen() {
 
       {/* Preferences */}
       <View style={styles.prefsCard}>
-        <View style={styles.prefRow}>
+        <TouchableOpacity
+          style={styles.prefRow}
+          activeOpacity={0.8}
+          onPress={() => togglePush(!(preferences?.pushEnabled ?? true))}
+        >
           <Text style={styles.prefLabel}>Push notifications</Text>
           <Switch
             value={preferences?.pushEnabled ?? true}
@@ -193,7 +277,7 @@ export default function NotificationsScreen() {
             trackColor={{ false: colors.outlineVariant, true: colors.secondary }}
             thumbColor="#fff"
           />
-        </View>
+        </TouchableOpacity>
         <Text style={styles.prefHint}>Mute specific types:</Text>
         <View style={styles.muteGrid}>
           {(Object.keys(TYPE_LABELS) as NotificationType[]).map(type => {
@@ -221,10 +305,30 @@ export default function NotificationsScreen() {
         contentContainerStyle={styles.listContent}
         refreshControl={<RefreshControl refreshing={loading} onRefresh={load} />}
         ListEmptyComponent={
-          <View style={styles.empty}>
-            <Ionicons name="notifications-off-outline" size={48} color={colors.outline} />
-            <Text style={styles.emptyText}>No notifications yet</Text>
-          </View>
+          loading ? (
+            <View style={{ gap: spacing.sm }}>
+              {[1, 2, 3, 4, 5].map((key) => (
+                <View key={key} style={styles.card}>
+                  <Skeleton width={40} height={40} borderRadius={20} />
+                  <View style={styles.cardBody}>
+                    <Skeleton width="30%" height={12} style={{ marginBottom: 4 }} />
+                    <Skeleton width="70%" height={16} style={{ marginBottom: 4 }} />
+                    <Skeleton width="100%" height={14} style={{ marginBottom: 2 }} />
+                    <Skeleton width="80%" height={14} style={{ marginBottom: 6 }} />
+                    <Skeleton width="40%" height={12} />
+                  </View>
+                </View>
+              ))}
+            </View>
+          ) : (
+            <View style={styles.empty}>
+              <Ionicons name="notifications-off-outline" size={48} color={colors.secondary} />
+              <Text style={styles.emptyText}>No Notifications Yet</Text>
+              <Text style={{ fontFamily: 'Inter_400Regular', fontSize: 13, color: colors.onSurfaceVariant, textAlign: 'center', marginTop: 4 }}>
+                You are all caught up! Updates about applications, mentorships, and matches will appear here.
+              </Text>
+            </View>
+          )
         }
       />
     </SafeAreaView>
@@ -305,6 +409,7 @@ const styles = StyleSheet.create({
 
   card: {
     flexDirection: 'row',
+    alignItems: 'flex-start',
     gap: spacing.md,
     backgroundColor: colors.surfaceCard,
     borderRadius: radius.lg,
@@ -320,10 +425,11 @@ const styles = StyleSheet.create({
   cardIcon: {
     width: 40,
     height: 40,
-    borderRadius: radius.full,
+    borderRadius: 20,
     backgroundColor: `${colors.secondary}15`,
     justifyContent: 'center',
     alignItems: 'center',
+    flexShrink: 0,
   },
   cardBody: { flex: 1 },
   cardHeader: {

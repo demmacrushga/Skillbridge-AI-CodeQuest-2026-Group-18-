@@ -123,9 +123,15 @@ public class WhisperTranscriptionServiceImpl implements WhisperTranscriptionServ
         if (contentType == null) {
             return "m4a";
         }
-        return switch (contentType) {
-            case "audio/mpeg" -> "mp3";
-            case "audio/wav" -> "wav";
+        return switch (contentType.toLowerCase()) {
+            case "audio/mpeg", "audio/mp3" -> "mp3";
+            case "audio/wav", "audio/x-wav" -> "wav";
+            case "audio/webm" -> "webm";
+            case "audio/mp4" -> "mp4";
+            case "audio/aac" -> "aac";
+            case "audio/ogg" -> "ogg";
+            case "audio/3gpp" -> "3gp";
+            case "audio/caf" -> "caf";
             default -> "m4a";
         };
     }

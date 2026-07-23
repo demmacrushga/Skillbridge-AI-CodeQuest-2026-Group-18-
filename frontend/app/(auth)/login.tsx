@@ -9,25 +9,35 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useAuth } from '@/context/AuthContext';
+import { forgotPassword } from '@/services/auth';
 import { colors, typography, spacing, radius } from '@/constants/theme';
+import { AnimatedFadeIn, AnimatedPressable } from '@/components/ui/AnimatedView';
+import { AnimatedTextInput } from '@/components/ui/AnimatedTextInput';
 
 export default function LoginScreen() {
   const { login } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+
+  // Forgot password state
+  const [showForgotModal, setShowForgotModal] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [forgotSuccess, setForgotSuccess] = useState(false);
+  const [forgotLoading, setForgotLoading] = useState(false);
+  const [forgotError, setForgotError] = useState('');
 
   async function handleLogin() {
     setError('');
     if (!email || !password) {
-      setError('Please fill in all fields.');
+      setError('Please fill in both email and password.');
       return;
     }
     setIsLoading(true);
@@ -35,9 +45,42 @@ export default function LoginScreen() {
       await login({ email: email.trim().toLowerCase(), password });
     } catch (e: unknown) {
       const err = e as { status?: number; message?: string };
-      setError(err.status === 401 ? 'Invalid email or password.' : (err.message ?? 'Something went wrong. Try again.'));
+      if (err.status === 401) {
+        // Wrong credentials — show the actual error, don't redirect
+        setError('Invalid email or password. Please check your credentials and try again.');
+      } else if (err.status === 0) {
+        // Network error
+        setError('Unable to connect to the server. Please check your internet connection.');
+      } else {
+        setError(err.message ?? 'Something went wrong. Please try again.');
+      }
     } finally {
       setIsLoading(false);
+    }
+  }
+
+  async function handleSendForgot() {
+    setForgotError('');
+    const trimmedEmail = forgotEmail.trim();
+
+    if (!trimmedEmail) {
+      setForgotError('Please enter your email address.');
+      return;
+    }
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
+      setForgotError('Please enter a valid email address (e.g. name@university.edu.gh).');
+      return;
+    }
+
+    setForgotLoading(true);
+    try {
+      await forgotPassword(trimmedEmail);
+      setForgotSuccess(true);
+    } catch (e: any) {
+      setForgotError(e.message ?? 'Failed to send reset link. Please try again.');
+    } finally {
+      setForgotLoading(false);
     }
   }
 
@@ -52,127 +95,171 @@ export default function LoginScreen() {
           </TouchableOpacity>
 
           {/* Brand */}
-          <View style={styles.brandRow}>
-            <View style={styles.logoMark}>
-              <Ionicons name="compass" size={22} color={colors.onPrimary} />
+          <AnimatedFadeIn delay={100} duration={400}>
+            <View style={styles.brandRow}>
+              <View style={styles.logoMark}>
+                <Ionicons name="compass" size={22} color={colors.onPrimary} />
+              </View>
+              <Text style={styles.brandName}>SkillBridge</Text>
             </View>
-            <Text style={styles.brandName}>SkillBridge</Text>
-          </View>
+          </AnimatedFadeIn>
 
           {/* Heading */}
-          <View style={styles.heading}>
-            <Text style={styles.title}>Welcome Back</Text>
-            <Text style={styles.subtitle}>Sign in to continue your career journey</Text>
-          </View>
+          <AnimatedFadeIn delay={200} duration={400}>
+            <View style={styles.heading}>
+              <Text style={styles.title}>Welcome Back</Text>
+              <Text style={styles.subtitle}>Sign in to continue your career journey</Text>
+            </View>
+          </AnimatedFadeIn>
 
           {/* Error */}
           {error ? (
-            <View style={styles.errorBanner}>
-              <Ionicons name="alert-circle-outline" size={16} color={colors.error} />
-              <Text style={styles.errorText}>{error}</Text>
-            </View>
+            <AnimatedFadeIn delay={0} duration={300}>
+              <View style={styles.errorBanner}>
+                <Ionicons name="alert-circle-outline" size={18} color={colors.error} />
+                <Text style={styles.errorText}>{error}</Text>
+              </View>
+            </AnimatedFadeIn>
           ) : null}
 
           {/* Form */}
-          <View style={styles.form}>
-            <View style={styles.field}>
-              <Text style={styles.label}>Email Address</Text>
-              <View style={styles.inputWrapper}>
-                <Ionicons name="mail-outline" size={18} color={colors.outline} />
-                <TextInput
-                  style={styles.input}
-                  value={email}
-                  onChangeText={setEmail}
-                  placeholder="you@university.edu.gh"
-                  placeholderTextColor={colors.outline}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                  autoComplete="email"
-                  accessibilityLabel="Email address"
-                />
-              </View>
+          <AnimatedFadeIn delay={300} duration={450}>
+            <View style={styles.form}>
+              <AnimatedTextInput
+                label="Email Address"
+                icon="mail-outline"
+                value={email}
+                onChangeText={setEmail}
+                placeholder="you@university.edu.gh"
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoComplete="email"
+                accessibilityLabel="Email address"
+              />
+
+              <AnimatedTextInput
+                label="Password"
+                icon="lock-closed-outline"
+                isPassword
+                value={password}
+                onChangeText={setPassword}
+                placeholder="••••••••"
+                autoComplete="password"
+                accessibilityLabel="Password"
+              />
+
+              <TouchableOpacity
+                style={styles.forgotLink}
+                onPress={() => {
+                  setForgotEmail(email);
+                  setForgotError('');
+                  setForgotSuccess(false);
+                  setShowForgotModal(true);
+                }}
+                accessibilityLabel="Forgot password"
+              >
+                <Text style={styles.forgotText}>Forgot Password?</Text>
+              </TouchableOpacity>
             </View>
+          </AnimatedFadeIn>
 
-            <View style={styles.field}>
-              <Text style={styles.label}>Password</Text>
-              <View style={styles.inputWrapper}>
-                <Ionicons name="lock-closed-outline" size={18} color={colors.outline} />
-                <TextInput
-                  style={styles.input}
-                  value={password}
-                  onChangeText={setPassword}
-                  placeholder="••••••••"
-                  placeholderTextColor={colors.outline}
-                  secureTextEntry={!showPassword}
-                  autoComplete="password"
-                  accessibilityLabel="Password"
-                />
-                <TouchableOpacity
-                  onPress={() => setShowPassword(v => !v)}
-                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                  accessibilityLabel={showPassword ? 'Hide password' : 'Show password'}
-                >
-                  <Ionicons
-                    name={showPassword ? 'eye-off-outline' : 'eye-outline'}
-                    size={18}
-                    color={colors.outline}
-                  />
-                </TouchableOpacity>
-              </View>
-            </View>
-
-            <TouchableOpacity style={styles.forgotLink} accessibilityLabel="Forgot password">
-              <Text style={styles.forgotText}>Forgot Password?</Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* Sign in */}
-          <TouchableOpacity
-            style={[styles.primaryBtn, isLoading && styles.disabledBtn]}
-            onPress={handleLogin}
-            disabled={isLoading}
-            accessibilityRole="button"
-            accessibilityLabel="Sign in"
-          >
-            {isLoading ? (
-              <ActivityIndicator color={colors.onPrimary} />
-            ) : (
-              <>
-                <Ionicons name="log-in-outline" size={18} color={colors.onPrimary} />
-                <Text style={styles.primaryBtnText}>Sign In</Text>
-              </>
-            )}
-          </TouchableOpacity>
-
-          {/* Divider */}
-          <View style={styles.divider}>
-            <View style={styles.dividerLine} />
-            <Text style={styles.dividerText}>or continue with</Text>
-            <View style={styles.dividerLine} />
-          </View>
-
-          {/* Social */}
-          <View style={styles.socialRow}>
-            <TouchableOpacity style={styles.socialBtn} accessibilityLabel="Continue with Google">
-              <Ionicons name="logo-google" size={18} color={colors.onSurface} />
-              <Text style={styles.socialBtnText}>Google</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.socialBtn} accessibilityLabel="Continue with LinkedIn">
-              <Ionicons name="logo-linkedin" size={18} color={colors.onSurface} />
-              <Text style={styles.socialBtnText}>LinkedIn</Text>
-            </TouchableOpacity>
-          </View>
+          {/* Sign in button */}
+          <AnimatedFadeIn delay={400} duration={450}>
+            <AnimatedPressable
+              style={[styles.primaryBtn, isLoading && styles.disabledBtn]}
+              onPress={handleLogin}
+              disabled={isLoading}
+              accessibilityRole="button"
+              accessibilityLabel="Sign in"
+            >
+              {isLoading ? (
+                <ActivityIndicator color={colors.onPrimary} />
+              ) : (
+                <>
+                  <Ionicons name="log-in-outline" size={18} color={colors.onPrimary} />
+                  <Text style={styles.primaryBtnText}>Sign In</Text>
+                </>
+              )}
+            </AnimatedPressable>
+          </AnimatedFadeIn>
 
           {/* Footer */}
-          <View style={styles.footer}>
-            <Text style={styles.footerText}>Don't have an account? </Text>
-            <TouchableOpacity onPress={() => router.push('/(auth)/register')} accessibilityLabel="Sign up">
-              <Text style={styles.footerLink}>Sign Up</Text>
-            </TouchableOpacity>
-          </View>
+          <AnimatedFadeIn delay={500} duration={450}>
+            <View style={styles.footer}>
+              <Text style={styles.footerText}>Don't have an account? </Text>
+              <TouchableOpacity onPress={() => router.push('/(auth)/register')} accessibilityLabel="Sign up">
+                <Text style={styles.footerLink}>Sign Up</Text>
+              </TouchableOpacity>
+            </View>
+          </AnimatedFadeIn>
 
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {/* Forgot Password Modal */}
+      <Modal
+        visible={showForgotModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowForgotModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Reset Password</Text>
+              <TouchableOpacity onPress={() => setShowForgotModal(false)}>
+                <Ionicons name="close" size={22} color={colors.onSurface} />
+              </TouchableOpacity>
+            </View>
+
+            {forgotSuccess ? (
+              <View style={styles.modalSuccessBox}>
+                <Ionicons name="checkmark-circle-outline" size={40} color={colors.secondary} />
+                <Text style={styles.modalSuccessTitle}>Reset Link Sent!</Text>
+                <Text style={styles.modalSuccessDesc}>
+                  We have sent instructions to reset your password to <Text style={{ fontFamily: 'Inter_600SemiBold' }}>{forgotEmail}</Text>. Please check your inbox.
+                </Text>
+                <TouchableOpacity
+                  style={styles.modalCloseBtn}
+                  onPress={() => setShowForgotModal(false)}
+                >
+                  <Text style={styles.modalCloseBtnText}>Done</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <View style={{ gap: spacing.md }}>
+                <Text style={styles.modalDesc}>
+                  Enter the email address registered with your account and we will send you a password reset link.
+                </Text>
+                <AnimatedTextInput
+                  label="Registered Email"
+                  icon="mail-outline"
+                  value={forgotEmail}
+                  onChangeText={(v) => {
+                    setForgotEmail(v);
+                    setForgotError('');
+                  }}
+                  placeholder="you@university.edu.gh"
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  error={forgotError}
+                />
+                <TouchableOpacity
+                  style={[styles.primaryBtn, forgotLoading && styles.disabledBtn]}
+                  onPress={handleSendForgot}
+                  disabled={forgotLoading}
+                >
+                  {forgotLoading ? (
+                    <ActivityIndicator color={colors.onPrimary} />
+                  ) : (
+                    <Text style={styles.primaryBtnText}>Send Reset Link</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -282,4 +369,48 @@ const styles = StyleSheet.create({
   footer: { flexDirection: 'row', justifyContent: 'center' },
   footerText: { ...typography.bodyMd, color: colors.onSurfaceVariant },
   footerLink: { ...typography.bodyMd, color: colors.tertiary, fontFamily: 'Inter_600SemiBold' },
+
+  /* Modal */
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(15, 23, 42, 0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: spacing.lg,
+  },
+  modalContent: {
+    width: '100%',
+    maxWidth: 400,
+    backgroundColor: colors.surfaceCard,
+    borderRadius: radius.lg,
+    padding: spacing.lg,
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.md,
+  },
+  modalTitle: { ...typography.headlineSm, color: colors.primary, fontSize: 20 },
+  modalDesc: { ...typography.bodyMd, color: colors.onSurfaceVariant, lineHeight: 22 },
+  modalSuccessBox: {
+    alignItems: 'center',
+    paddingVertical: spacing.md,
+    gap: spacing.sm,
+  },
+  modalSuccessTitle: { ...typography.headlineSm, color: colors.primary, fontSize: 20 },
+  modalSuccessDesc: { ...typography.bodyMd, color: colors.onSurfaceVariant, textAlign: 'center', lineHeight: 22 },
+  modalCloseBtn: {
+    backgroundColor: colors.primary,
+    borderRadius: radius.md,
+    paddingVertical: 12,
+    paddingHorizontal: spacing.xl,
+    marginTop: spacing.sm,
+  },
+  modalCloseBtnText: { ...typography.labelMd, color: colors.onPrimary },
 });

@@ -10,12 +10,15 @@ import {
   RefreshControl,
   Linking,
   Alert,
+  Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useAuth } from '@/context/AuthContext';
 import { colors, typography, spacing, radius } from '@/constants/theme';
+import { SkeletonJobCard } from '@/components/ui/SkeletonCard';
+import { AnimatedFadeIn, AnimatedPressable } from '@/components/ui/AnimatedView';
 import {
   getMatches,
   apply,
@@ -34,15 +37,67 @@ function scoreColor(score: number) {
   return colors.onSurfaceVariant;
 }
 
+function ApplyModal({
+  visible,
+  opportunityTitle,
+  onClose,
+  onSubmit,
+}: {
+  visible: boolean;
+  opportunityTitle: string;
+  onClose: () => void;
+  onSubmit: (pitch: string) => void;
+}) {
+  const [pitch, setPitch] = useState('');
+
+  return (
+    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
+      <View style={styles.modalOverlay}>
+        <View style={styles.modalSheet}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Apply: {opportunityTitle}</Text>
+            <TouchableOpacity onPress={onClose}>
+              <Ionicons name="close" size={24} color={colors.onSurface} />
+            </TouchableOpacity>
+          </View>
+
+          <Text style={styles.fieldLabel}>Pitch / Cover Letter</Text>
+          <Text style={styles.fieldHint}>Explain why you are a great fit for this role based on the required skills.</Text>
+          <TextInput
+            style={[styles.input, styles.inputMultiline]}
+            value={pitch}
+            onChangeText={setPitch}
+            placeholder="I believe I am a strong candidate because..."
+            placeholderTextColor={colors.outline}
+            multiline
+            numberOfLines={5}
+          />
+
+          <View style={styles.buttonGroup}>
+            <TouchableOpacity style={styles.cancelButton} onPress={onClose}>
+              <Text style={styles.cancelButtonText}>Cancel</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.submitButton} onPress={() => { onSubmit(pitch); setPitch(''); }}>
+              <Text style={styles.submitButtonText}>Submit Application</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
 function MatchCard({
   match,
   expanded,
+  studentSkills,
   onToggle,
   onApply,
   isApplying,
 }: {
   match: Match;
   expanded: boolean;
+  studentSkills: string[];
   onToggle: () => void;
   onApply: () => void;
   isApplying: boolean;
@@ -74,6 +129,7 @@ function MatchCard({
           </View>
           <Text style={styles.matchMeta} numberOfLines={1}>
             {o.companyName}
+            {o.opportunityType ? ` · ${o.opportunityType.replace('_', ' ')}` : ''}
             {o.location ? ` · ${o.location}` : ''}
             {deadlineStr ? ` · due ${deadlineStr}` : ''}
           </Text>
@@ -88,20 +144,35 @@ function MatchCard({
       {expanded ? (
         <View style={styles.matchDetail}>
           <Text style={styles.matchDescription}>{o.description}</Text>
+          <Text style={[styles.fieldLabel, { fontSize: 13, marginBottom: 6 }]}>Skills Comparison & Requirements:</Text>
           <View style={styles.skillsRow}>
-            {o.requiredSkills.map(s => (
-              <View
-                key={s.skillName}
-                style={[styles.skillChip, !s.required && styles.skillChipOptional]}
-              >
-                <Text
-                  style={[styles.skillChipText, !s.required && styles.skillChipOptionalText]}
+            {o.requiredSkills.map(s => {
+              const hasSkill = studentSkills.some(sk => sk.toLowerCase() === s.skillName.toLowerCase());
+              return (
+                <View
+                  key={s.skillName}
+                  style={[
+                    styles.skillChip,
+                    hasSkill ? styles.skillChipMatched : styles.skillChipMissing,
+                  ]}
                 >
-                  {s.skillName}
-                  {!s.required ? ' (nice)' : ''}
-                </Text>
-              </View>
-            ))}
+                  <Ionicons
+                    name={hasSkill ? "checkmark-circle" : "alert-circle-outline"}
+                    size={12}
+                    color={hasSkill ? colors.secondary : colors.error}
+                    style={{ marginRight: 4 }}
+                  />
+                  <Text
+                    style={[
+                      styles.skillChipText,
+                      hasSkill ? styles.skillChipMatchedText : styles.skillChipMissingText,
+                    ]}
+                  >
+                    {s.skillName} {hasSkill ? '(Matched)' : '(Missing)'}
+                  </Text>
+                </View>
+              );
+            })}
           </View>
           {match.applied ? (
             <View style={styles.appliedRow}>
@@ -147,6 +218,14 @@ export default function OpportunitiesScreen() {
   const [editedSkills, setEditedSkills] = useState<string[]>([]);
   const [newSkill, setNewSkill] = useState('');
   const [isSavingSkills, setIsSavingSkills] = useState(false);
+  
+  const [searchQuery, setSearchQuery] = useState('');
+  const [applyModalMatch, setApplyModalMatch] = useState<Match | null>(null);
+
+  const filteredMatches = matches.filter(m => 
+    m.opportunity.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    m.opportunity.companyName.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   const load = useCallback(
     async (refreshing = false) => {
@@ -178,8 +257,17 @@ export default function OpportunitiesScreen() {
 
   useFocusEffect(useCallback(() => { load(); }, [load]));
 
-  const handleApply = async (match: Match) => {
+  const initiateApply = (match: Match) => {
+    if (match.opportunity.externalUrl) {
+      handleApply(match, '');
+    } else {
+      setApplyModalMatch(match);
+    }
+  };
+
+  const handleApply = async (match: Match, pitch: string) => {
     if (!token) return;
+    setApplyModalMatch(null);
     const id = match.opportunity.id;
     setApplyingId(id);
     // Optimistic: flip to applied immediately
@@ -250,10 +338,21 @@ export default function OpportunitiesScreen() {
         <View style={styles.headerIconWrap}>
           <Ionicons name="briefcase" size={18} color={colors.primary} />
         </View>
-        <View>
+        <View style={{ flex: 1 }}>
           <Text style={styles.headerTitle}>Opportunities</Text>
           <Text style={styles.headerSubtitle}>Internships matched to your skills</Text>
         </View>
+      </View>
+
+      <View style={styles.searchContainer}>
+        <Ionicons name="search" size={20} color={colors.outline} style={styles.searchIcon} />
+        <TextInput
+          style={styles.searchInput}
+          placeholder="Search by title or company..."
+          placeholderTextColor={colors.outline}
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+        />
       </View>
 
       <ScrollView
@@ -345,37 +444,42 @@ export default function OpportunitiesScreen() {
         <Text style={styles.sectionLabel}>Ranked Matches</Text>
 
         {isLoading ? (
-          <ActivityIndicator size="small" color={colors.primary} style={styles.loader} />
+          <View style={{ gap: spacing.sm }}>
+            <SkeletonJobCard />
+            <SkeletonJobCard />
+            <SkeletonJobCard />
+          </View>
         ) : error ? (
           <View style={styles.errorRow}>
             <Ionicons name="alert-circle-outline" size={14} color={colors.error} />
             <Text style={styles.errorText}>{error}</Text>
           </View>
-        ) : matches.length === 0 ? (
+        ) : filteredMatches.length === 0 ? (
           <View style={styles.emptyCard}>
             <View style={styles.emptyIconWrap}>
               <Ionicons name="briefcase-outline" size={28} color={colors.onSurfaceVariant} />
             </View>
-            <Text style={styles.emptyTitle}>No opportunities yet</Text>
+            <Text style={styles.emptyTitle}>No matching opportunities found</Text>
             <Text style={styles.emptySubtitle}>
-              New internship and entry-level postings will appear here, ranked by how well
-              they match your skills
+              Try adjusting your search query or updating your skills.
             </Text>
           </View>
         ) : (
           <View style={styles.matchList}>
-            {matches.map(m => (
-              <MatchCard
-                key={m.opportunity.id}
-                match={m}
-                expanded={expandedId === m.opportunity.id}
-                onToggle={() =>
-                  setExpandedId(prev => (prev === m.opportunity.id ? null : m.opportunity.id))
-                }
-                onApply={() => handleApply(m)}
-                isApplying={applyingId === m.opportunity.id}
-              />
-            ))}
+              {filteredMatches.map((m, idx) => (
+                <AnimatedFadeIn key={m.opportunity.id} delay={idx * 30} duration={350}>
+                  <MatchCard
+                    match={m}
+                    expanded={expandedId === m.opportunity.id}
+                    studentSkills={skills}
+                    onToggle={() =>
+                      setExpandedId(prev => (prev === m.opportunity.id ? null : m.opportunity.id))
+                    }
+                    onApply={() => initiateApply(m)}
+                    isApplying={applyingId === m.opportunity.id}
+                  />
+                </AnimatedFadeIn>
+              ))}
           </View>
         )}
 
@@ -416,6 +520,15 @@ export default function OpportunitiesScreen() {
           </View>
         )}
       </ScrollView>
+
+      {applyModalMatch && (
+        <ApplyModal
+          visible={!!applyModalMatch}
+          opportunityTitle={applyModalMatch.opportunity.title}
+          onClose={() => setApplyModalMatch(null)}
+          onSubmit={(pitch) => handleApply(applyModalMatch, pitch)}
+        />
+      )}
     </SafeAreaView>
   );
 }
@@ -506,13 +619,19 @@ const styles = StyleSheet.create({
   },
   saveSkillsBtnText: { ...typography.labelMd, color: colors.onPrimary },
 
-  matchList: { gap: spacing.sm },
+  matchList: { gap: spacing.md },
   matchCard: {
     backgroundColor: colors.surfaceCard,
     borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: colors.outlineVariant,
     overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+    marginBottom: spacing.sm,
   },
   matchCardHead: {
     flexDirection: 'row',
@@ -570,12 +689,17 @@ const styles = StyleSheet.create({
     lineHeight: 19,
   },
   skillChip: {
-    backgroundColor: `${colors.primary}10`,
+    flexDirection: 'row',
+    alignItems: 'center',
     borderRadius: radius.full,
     paddingHorizontal: 10,
     paddingVertical: 4,
   },
-  skillChipText: { fontFamily: 'Inter_500Medium', fontSize: 11, color: colors.primary },
+  skillChipText: { fontFamily: 'Inter_500Medium', fontSize: 11 },
+  skillChipMatched: { backgroundColor: `${colors.secondary}15`, borderWidth: 1, borderColor: `${colors.secondary}30` },
+  skillChipMatchedText: { color: colors.secondary },
+  skillChipMissing: { backgroundColor: '#FFF5F5', borderWidth: 1, borderColor: '#FFCDD2' },
+  skillChipMissingText: { color: colors.error },
   skillChipOptional: { backgroundColor: colors.surfaceContainerLow },
   skillChipOptionalText: { color: colors.onSurfaceVariant },
   skillChipEditable: {
@@ -675,4 +799,71 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 20,
   },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.surfaceCard,
+    marginHorizontal: spacing.md,
+    marginTop: spacing.md,
+    paddingHorizontal: spacing.sm,
+    borderRadius: radius.full,
+    borderWidth: 1,
+    borderColor: colors.outlineVariant,
+  },
+  searchIcon: { marginRight: spacing.xs },
+  searchInput: {
+    flex: 1,
+    height: 40,
+    fontFamily: 'Inter_400Regular',
+    fontSize: 14,
+    color: colors.onSurface,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalSheet: {
+    backgroundColor: colors.surfaceCard,
+    borderTopLeftRadius: radius.xl,
+    borderTopRightRadius: radius.xl,
+    padding: spacing.lg,
+    paddingBottom: spacing.xl,
+    gap: spacing.sm,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: spacing.md,
+  },
+  modalTitle: { ...typography.headlineSm, color: colors.onSurface },
+  fieldLabel: { ...typography.labelMd, color: colors.onSurfaceVariant, marginTop: spacing.sm },
+  fieldHint: { fontFamily: 'Inter_400Regular', fontSize: 12, color: colors.outline, marginBottom: spacing.xs },
+  input: {
+    borderWidth: 1,
+    borderColor: colors.outlineVariant,
+    borderRadius: radius.md,
+    padding: spacing.sm,
+    ...typography.bodyMd,
+    color: colors.onSurface,
+  },
+  inputMultiline: { height: 100, textAlignVertical: 'top' },
+  buttonGroup: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.lg },
+  cancelButton: {
+    flex: 1,
+    padding: spacing.md,
+    alignItems: 'center',
+    borderRadius: radius.md,
+    backgroundColor: colors.surfaceContainerHigh,
+  },
+  cancelButtonText: { ...typography.labelMd, color: colors.onSurface },
+  submitButton: {
+    flex: 2,
+    backgroundColor: colors.secondary,
+    borderRadius: radius.md,
+    padding: spacing.md,
+    alignItems: 'center',
+  },
+  submitButtonText: { ...typography.labelMd, color: colors.onPrimary, fontWeight: '700' },
 });

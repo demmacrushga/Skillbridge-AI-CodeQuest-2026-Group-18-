@@ -49,12 +49,14 @@ public class AuthServiceImpl implements AuthService {
             throw new InvalidRegistrationRoleException(Role.ADMIN.name());
         }
 
-        if (userRepository.existsByEmail(request.email())) {
-            throw new EmailAlreadyExistsException(request.email());
+        String normalizedEmail = request.email() != null ? request.email().trim() : "";
+
+        if (userRepository.existsByEmailIgnoreCase(normalizedEmail)) {
+            throw new EmailAlreadyExistsException(normalizedEmail);
         }
 
         User user = User.builder()
-                .email(request.email())
+                .email(normalizedEmail.toLowerCase())
                 .passwordHash(passwordEncoder.encode(request.password()))
                 .firstName(request.firstName())
                 .lastName(request.lastName())
@@ -71,7 +73,8 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     public AuthResponse login(LoginRequest request) {
-        User user = userRepository.findByEmail(request.email())
+        String rawEmail = request.email() != null ? request.email().trim() : "";
+        User user = userRepository.findByEmailIgnoreCase(rawEmail)
                 .orElseThrow(() -> new BadCredentialsException("Invalid credentials"));
 
         if (!passwordEncoder.matches(request.password(), user.getPasswordHash())) {

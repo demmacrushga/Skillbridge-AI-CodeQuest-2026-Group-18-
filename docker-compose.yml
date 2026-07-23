@@ -114,10 +114,12 @@ services:
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
       WHISPER_URL: http://whisper-service:9000
       WHISPER_TIMEOUT_MS: 60000
-      WHISPER_STARTUP_PROBE: "false"  # whisper-service commented out below; voice falls back to typing (503)
+      WHISPER_STARTUP_PROBE: "true"
       SERVER_PORT: 8005
     depends_on:
       postgres:
+        condition: service_healthy
+      whisper-service:
         condition: service_healthy
   challenge-service:
     build:
@@ -199,26 +201,25 @@ services:
       postgres:
         condition: service_healthy
 
-  # whisper-service disabled for now — voice transcription in mock-interview-service
-  # degrades gracefully (503 → student types instead). Uncomment to re-enable.
-  # whisper-service:
-  #   # TODO: pin to a specific digest before prod for reproducible local dev (plan FR-014 note)
-  #   image: onerahmet/openai-whisper-asr-webservice:latest
-  #   container_name: skillbridge-whisper
-  #   ports:
-  #     - "9006:9000"
-  #   environment:
-  #     ASR_MODEL: small
-  #     ASR_ENGINE: faster_whisper
-  #   volumes:
-  #     - whisper-model-cache:/root/.cache/huggingface
-  #   restart: unless-stopped
-  #   healthcheck:
-  #     test: ["CMD-SHELL", "python3 -c \"import urllib.request; urllib.request.urlopen('http://localhost:9000/openapi.json')\""]
-  #     interval: 15s
-  #     timeout: 5s
-  #     retries: 5
-  #     start_period: 60s
+  whisper-service:
+    build:
+      context: ./backend/whisper-service
+      dockerfile: Dockerfile
+    container_name: skillbridge-whisper
+    ports:
+      - "9000:9000"
+    environment:
+      WHISPER_MODEL: tiny.en
+      PORT: 9000
+    volumes:
+      - whisper-model-cache:/root/.cache
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:9000/health')\""]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
 
   gateway:
     image: nginx:alpine
@@ -237,8 +238,9 @@ services:
       - challenge-service
       - mentorship-service
       - notification-service
+      - whisper-service
 
 volumes:
   postgres_data:
   skillgap_uploads:
-  # whisper-model-cache: disabled alongside whisper-service above
+  whisper-model-cache:
