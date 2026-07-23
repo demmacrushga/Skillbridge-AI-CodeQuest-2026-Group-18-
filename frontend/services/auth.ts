@@ -52,7 +52,7 @@ async function request<T>(path: string, options: RequestInit): Promise<T> {
     });
   } catch (networkErr) {
     console.log('[Auth] Network error:', networkErr);
-    throw { status: 0, message: 'Cannot reach server. Is it running?' };
+    throw { status: 0, message: 'SkillBridge server is currently unavailable. Please check your network connection.' };
   }
 
   console.log(`[Auth] Response ${res.status} ${res.statusText}`);
@@ -60,7 +60,7 @@ async function request<T>(path: string, options: RequestInit): Promise<T> {
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     console.log('[Auth] Error body:', body);
-    throw { status: res.status, message: body.message ?? `Request failed (${res.status})` };
+    throw { status: res.status, message: body.message ?? body.error ?? `Authentication request failed (${res.status})` };
   }
 
   return res.json();
@@ -93,7 +93,7 @@ export async function register(payload: RegisterPayload): Promise<UserResponse> 
 
 export async function refreshTokens(): Promise<AuthResponse> {
   const refreshToken = await SecureStore.getItemAsync(KEYS.refreshToken);
-  if (!refreshToken) throw { status: 401, message: 'No refresh token' };
+  if (!refreshToken) throw { status: 401, message: 'No refresh token available' };
 
   const data = await request<AuthResponse>('/auth/refresh', {
     method: 'POST',
@@ -127,14 +127,11 @@ export async function clearTokens() {
 }
 
 export async function forgotPassword(email: string): Promise<void> {
-  try {
-    return await request('/auth/forgot-password', {
-      method: 'POST',
-      body: JSON.stringify({ email: email.trim().toLowerCase() }),
-    });
-  } catch (err) {
-    console.log('[Demo Mode] forgotPassword endpoint handled gracefully:', err);
-    return;
-  }
+  return request('/auth/forgot-password', {
+    method: 'POST',
+    body: JSON.stringify({ email: email.trim().toLowerCase() }),
+  });
 }
+
+
 

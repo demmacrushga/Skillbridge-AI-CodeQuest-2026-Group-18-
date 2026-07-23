@@ -9,18 +9,23 @@ import {
 const BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:8080';
 
 async function request<T>(path: string, accessToken: string, options: RequestInit): Promise<T> {
-  const res = await fetch(`${BASE_URL}${path}`, {
-    ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${accessToken}`,
-      ...options.headers,
-    },
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${BASE_URL}${path}`, {
+      ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${accessToken}`,
+        ...options.headers,
+      },
+    });
+  } catch (err) {
+    throw { status: 0, message: 'SkillBridge mock interview service is currently unavailable. Please check your network connection.' };
+  }
 
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
-    throw { status: res.status, message: body.error ?? body.message ?? 'Request failed' };
+    throw { status: res.status, message: body.error ?? body.message ?? `Request failed (${res.status})` };
   }
 
   return res.json();
@@ -53,7 +58,7 @@ export async function transcribeAnswer(
 
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
-    throw { status: res.status, message: body.error ?? body.message ?? 'Transcription failed' };
+    throw { status: res.status, message: body.message ?? body.error ?? 'Failed to transcribe voice answer.' };
   }
 
   const data = (await res.json()) as TranscribeResponse;

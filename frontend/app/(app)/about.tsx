@@ -1,3 +1,4 @@
+import { useCallback } from 'react';
 import {
   View,
   Text,
@@ -5,19 +6,35 @@ import {
   ScrollView,
   TouchableOpacity,
   Linking,
+  BackHandler,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
+import { useFocusEffect, router } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { colors, typography, spacing, radius } from '@/constants/theme';
 import { AnimatedFadeIn } from '@/components/ui/AnimatedView';
 
 export default function AboutScreen() {
+  function handleGoBack() {
+    router.replace('/(app)/profile');
+  }
+
+  useFocusEffect(
+    useCallback(() => {
+      const onBackPress = () => {
+        router.replace('/(app)/profile');
+        return true;
+      };
+      const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+      return () => subscription.remove();
+    }, [])
+  );
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+        <TouchableOpacity onPress={handleGoBack} style={styles.backBtn} accessibilityLabel="Back to Profile">
           <Ionicons name="chevron-back" size={24} color={colors.onSurface} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>About SkillBridge</Text>

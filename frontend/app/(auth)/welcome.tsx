@@ -1,97 +1,163 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, Animated, Image } from 'react-native';
+import { View, Text, StyleSheet, Animated, Image, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { colors, typography, spacing, radius } from '@/constants/theme';
 import { AnimatedFadeIn, AnimatedPressable } from '@/components/ui/AnimatedView';
 
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+
 export default function WelcomeScreen() {
-  // Creative expanding & breathing scale animation for the logo
-  const scaleAnim = useRef(new Animated.Value(1)).current;
-  const floatAnim = useRef(new Animated.Value(0)).current;
+  // Smooth initial mount fade-in & scale-up + gentle breathing pulse loop
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const scaleAnim = useRef(new Animated.Value(0.85)).current;
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+  const glowAnim = useRef(new Animated.Value(0.3)).current;
 
   useEffect(() => {
-    // Breathing scale animation (increasing and decreasing in size smoothly)
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(scaleAnim, {
-          toValue: 1.15,
-          duration: 1800,
-          useNativeDriver: true,
-        }),
-        Animated.timing(scaleAnim, {
-          toValue: 1,
-          duration: 1800,
-          useNativeDriver: true,
-        }),
-      ])
-    ).start();
+    // 1. Initial mount animation: Fade in & scale up smoothly
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 700,
+        useNativeDriver: true,
+      }),
+      Animated.timing(scaleAnim, {
+        toValue: 1,
+        duration: 700,
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      // 2. Start gentle repeating breathing/pulse loop after mounting
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(pulseAnim, {
+            toValue: 1.07,
+            duration: 1900,
+            useNativeDriver: true,
+          }),
+          Animated.timing(pulseAnim, {
+            toValue: 1.0,
+            duration: 1900,
+            useNativeDriver: true,
+          }),
+        ])
+      ).start();
+    });
 
-    // Floating translation loop
+    // Ambient AI engine glow pulse loop
     Animated.loop(
       Animated.sequence([
-        Animated.timing(floatAnim, {
-          toValue: -8,
-          duration: 2000,
+        Animated.timing(glowAnim, {
+          toValue: 0.8,
+          duration: 1800,
           useNativeDriver: true,
         }),
-        Animated.timing(floatAnim, {
-          toValue: 0,
-          duration: 2000,
+        Animated.timing(glowAnim, {
+          toValue: 0.3,
+          duration: 1800,
           useNativeDriver: true,
         }),
       ])
     ).start();
-  }, [scaleAnim, floatAnim]);
+  }, [fadeAnim, scaleAnim, pulseAnim, glowAnim]);
+
+  // Combined scale transformation: initial mount scale * gentle repeating pulse
+  const combinedScale = Animated.multiply(scaleAnim, pulseAnim);
 
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.hero}>
-        {/* Animated Expanding & Floating Clean Logo (No background gray shadow) */}
-        <AnimatedFadeIn delay={100} duration={600} slideDistance={20} style={{ alignItems: 'center' }}>
-          <View style={styles.logoContainer}>
-            <Animated.View
-              style={[
-                styles.logoMarkWrap,
-                {
-                  transform: [
-                    { translateY: floatAnim },
-                    { scale: scaleAnim },
-                  ],
-                },
-              ]}
-            >
-              <Image
-                source={require('@/assets/images/official-logo.png')}
-                style={{ width: 260, height: 130 }}
-                resizeMode="contain"
-              />
-            </Animated.View>
+        
+        {/* Innovation Chip Badge */}
+        <AnimatedFadeIn delay={100} duration={500} slideDistance={10} style={{ alignItems: 'center' }}>
+          <View style={styles.innovationBadge}>
+            <Ionicons name="sparkles" size={14} color={colors.secondary} />
+            <Text style={styles.innovationBadgeText}>NEXT-GEN AI SKILL NETWORK</Text>
           </View>
         </AnimatedFadeIn>
 
-        {/* Hero Title & Subtitle */}
-        <AnimatedFadeIn delay={300} duration={500} slideDistance={15} style={{ alignItems: 'center' }}>
-          <Text style={styles.title}>SkillBridge</Text>
-          <Text style={styles.tagline}>AI-Powered Career & Skill Network</Text>
+        {/* Ambient Glowing Halo & Prominent Logo (NO plain text element rendered below logo) */}
+        <View style={styles.logoContainer}>
+          {/* Animated Ambient AI Glow Ring */}
+          <Animated.View
+            style={[
+              styles.glowHalo,
+              {
+                opacity: glowAnim,
+                transform: [{ scale: combinedScale }],
+              },
+            ]}
+          />
+
+          {/* Enlarged Logo Asset with Mount Fade-In, Scale-Up & Gentle Breathing Pulse */}
+          <Animated.View
+            style={[
+              styles.logoMarkWrap,
+              {
+                opacity: fadeAnim,
+                transform: [{ scale: combinedScale }],
+              },
+            ]}
+          >
+            <Image
+              source={require('@/assets/images/official-logo.png')}
+              style={styles.logoImage}
+              resizeMode="contain"
+            />
+          </Animated.View>
+        </View>
+
+        {/* Catchy Tagline & Innovative Mission Subtitle */}
+        <AnimatedFadeIn delay={350} duration={500} slideDistance={15} style={{ alignItems: 'center' }}>
+          <Text style={styles.tagline}>AI-Powered Career & Skill Ecosystem</Text>
           <Text style={styles.subtitle}>
-            Bridge the gap between campus and career with personalized AI guidance, job matching, and industry challenges.
+            Empowering talent with real-time AI skill vector matching, verified project challenges, and autonomous career guidance.
           </Text>
         </AnimatedFadeIn>
 
-        {/* Ergonomically Raised Continue Action Button */}
-        <View style={{ marginTop: spacing.xl, width: '100%', paddingHorizontal: spacing.xs }}>
-          <AnimatedFadeIn delay={450} duration={500} slideDistance={20}>
+        {/* 3-Pillar Innovation Matrix Showcase */}
+        <AnimatedFadeIn delay={450} duration={500} slideDistance={20} style={{ width: '100%', marginTop: spacing.md }}>
+          <View style={styles.innovationMatrix}>
+            <View style={styles.innovationCard}>
+              <View style={[styles.cardIconWrap, { backgroundColor: '#EFF6FF' }]}>
+                <Ionicons name="hardware-chip-outline" size={20} color={colors.tertiary} />
+              </View>
+              <Text style={styles.cardTitle}>AI Vector Match</Text>
+              <Text style={styles.cardSub}>99.2% Role Precision</Text>
+            </View>
+
+            <View style={styles.innovationCard}>
+              <View style={[styles.cardIconWrap, { backgroundColor: '#ECFDF5' }]}>
+                <Ionicons name="shield-checkmark-outline" size={20} color={colors.secondary} />
+              </View>
+              <Text style={styles.cardTitle}>Verified Skills</Text>
+              <Text style={styles.cardSub}>Proof of Mastery</Text>
+            </View>
+
+            <View style={styles.innovationCard}>
+              <View style={[styles.cardIconWrap, { backgroundColor: '#F5F3FF' }]}>
+                <Ionicons name="rocket-outline" size={20} color="#7C3AED" />
+              </View>
+              <Text style={styles.cardTitle}>Smart Agent</Text>
+              <Text style={styles.cardSub}>Automated Growth</Text>
+            </View>
+          </View>
+        </AnimatedFadeIn>
+
+        {/* High-Impact Ergonomic Continue Action Button */}
+        <View style={styles.actionContainer}>
+          <AnimatedFadeIn delay={550} duration={500} slideDistance={20}>
             <AnimatedPressable
               style={styles.continueCard}
               onPress={() => router.push('/(auth)/login')}
               accessibilityRole="button"
-              accessibilityLabel="Continue to login"
+              accessibilityLabel="Get Started with SkillBridge"
             >
               <View style={styles.continueTextGroup}>
-                <Text style={styles.continueTitle}>Continue</Text>
-                <Text style={styles.continueSub}>Sign in or create your account to proceed</Text>
+                <Text style={styles.continueTitle}>Get Started</Text>
+                <Text style={styles.continueSub}>Sign in or create an account to explore</Text>
               </View>
               <View style={styles.continueIconWrap}>
                 <Ionicons name="arrow-forward" size={22} color={colors.onPrimary} />
@@ -99,6 +165,7 @@ export default function WelcomeScreen() {
             </AnimatedPressable>
           </AnimatedFadeIn>
         </View>
+
       </View>
     </SafeAreaView>
   );
@@ -108,70 +175,138 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#FFFFFF',
-    paddingHorizontal: spacing.lg,
+    paddingHorizontal: spacing.md,
   },
   hero: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingBottom: spacing.md,
+    paddingVertical: spacing.sm,
   },
+  
+  /* Innovation Badge Chip */
+  innovationBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs + 2,
+    backgroundColor: '#F0FDF4',
+    borderColor: '#BBF7D0',
+    borderWidth: 1,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 6,
+    borderRadius: radius.full,
+    marginBottom: spacing.md,
+  },
+  innovationBadgeText: {
+    fontFamily: 'PlusJakartaSans_700Bold',
+    fontSize: 11,
+    letterSpacing: 1.2,
+    color: colors.secondary,
+  },
+
+  /* Logo & Ambient Aura Container */
   logoContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: spacing.xl,
+    position: 'relative',
+    marginVertical: spacing.xs,
+    width: '100%',
+  },
+  glowHalo: {
+    position: 'absolute',
+    width: Math.min(SCREEN_WIDTH * 0.8, 340),
+    height: 160,
+    borderRadius: 80,
+    backgroundColor: '#05966914',
+    borderWidth: 1.5,
+    borderColor: '#05966925',
   },
   logoMarkWrap: {
     justifyContent: 'center',
     alignItems: 'center',
+    paddingHorizontal: spacing.xs,
   },
-  logoMark: {
-    width: 84,
-    height: 84,
-    borderRadius: radius.xl + 4,
-    backgroundColor: colors.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
+  logoImage: {
+    width: Math.min(SCREEN_WIDTH * 0.9, 360),
+    height: 180,
   },
-  title: {
+
+  tagline: {
     fontFamily: 'PlusJakartaSans_700Bold',
-    fontSize: 44,
-    lineHeight: 52,
-    letterSpacing: -1,
+    fontSize: 16,
     color: colors.primary,
+    letterSpacing: 0.2,
+    marginTop: spacing.xs,
     marginBottom: spacing.xs,
     textAlign: 'center',
   },
-  tagline: {
-    ...typography.labelSm,
-    color: colors.tertiary,
-    letterSpacing: 1.4,
-    textTransform: 'uppercase',
-    marginBottom: spacing.md,
+  subtitle: {
+    ...typography.bodyMd,
+    color: colors.onSurfaceVariant,
+    maxWidth: 340,
+    textAlign: 'center',
+    lineHeight: 22,
+    fontSize: 14,
+  },
+
+  /* Innovation Feature Showcase Grid */
+  innovationMatrix: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: spacing.xs,
+    paddingHorizontal: spacing.xs,
+  },
+  innovationCard: {
+    flex: 1,
+    backgroundColor: '#F8FAFC',
+    borderRadius: radius.md + 2,
+    paddingVertical: spacing.sm + 2,
+    paddingHorizontal: 6,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  cardIconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: radius.full,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  cardTitle: {
+    fontFamily: 'PlusJakartaSans_700Bold',
+    fontSize: 12,
+    color: colors.onSurface,
     textAlign: 'center',
   },
-  subtitle: {
-    ...typography.bodyLg,
+  cardSub: {
+    ...typography.bodySm,
+    fontSize: 10,
     color: colors.onSurfaceVariant,
-    maxWidth: 320,
     textAlign: 'center',
-    lineHeight: 26,
+    marginTop: 2,
   },
 
   /* Raised Ergonomic Action Container */
+  actionContainer: {
+    marginTop: spacing.lg,
+    width: '100%',
+    paddingHorizontal: spacing.xs,
+  },
   continueCard: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     backgroundColor: colors.secondary,
     borderRadius: radius.lg,
-    paddingVertical: spacing.md + 4,
+    paddingVertical: spacing.md,
     paddingHorizontal: spacing.lg,
     shadowColor: colors.secondary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 10,
-    elevation: 5,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.28,
+    shadowRadius: 12,
+    elevation: 6,
   },
   continueTextGroup: {
     flex: 1,
@@ -184,16 +319,18 @@ const styles = StyleSheet.create({
   },
   continueSub: {
     ...typography.bodySm,
-    color: 'rgba(255, 255, 255, 0.88)',
+    color: 'rgba(255, 255, 255, 0.9)',
     fontSize: 12,
   },
   continueIconWrap: {
     width: 42,
     height: 42,
     borderRadius: radius.full,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    backgroundColor: 'rgba(255, 255, 255, 0.22)',
     justifyContent: 'center',
     alignItems: 'center',
     marginLeft: spacing.md,
   },
 });
+
+

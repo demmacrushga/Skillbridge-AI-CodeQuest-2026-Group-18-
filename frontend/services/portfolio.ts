@@ -12,18 +12,23 @@ import { DocumentPickerAsset } from 'expo-document-picker';
 const BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:8080';
 
 async function request<T>(path: string, accessToken: string, options: RequestInit): Promise<T> {
-  const res = await fetch(`${BASE_URL}${path}`, {
-    ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${accessToken}`,
-      ...options.headers,
-    },
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${BASE_URL}${path}`, {
+      ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${accessToken}`,
+        ...options.headers,
+      },
+    });
+  } catch (err) {
+    throw { status: 0, message: 'SkillBridge portfolio service is currently unavailable. Please check your network connection.' };
+  }
 
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
-    throw { status: res.status, message: body.message ?? 'Request failed' };
+    throw { status: res.status, message: body.message ?? body.error ?? `Request failed (${res.status})` };
   }
 
   return res.json();
@@ -36,8 +41,7 @@ export async function getMyPortfolio(accessToken: string): Promise<PortfolioItem
 export async function getPublicPortfolio(userId: string): Promise<PortfolioItem[]> {
   const res = await fetch(`${BASE_URL}/portfolio/${userId}`);
   if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
-    throw { status: res.status, message: body.message ?? 'Failed to load portfolio' };
+    throw { status: res.status, message: 'Unable to fetch public portfolio from server.' };
   }
   return res.json();
 }
@@ -70,7 +74,7 @@ export async function deletePortfolioItem(accessToken: string, itemId: string): 
   });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
-    throw { status: res.status, message: body.message ?? 'Failed to delete item' };
+    throw { status: res.status, message: body.message ?? body.error ?? 'Failed to delete portfolio item.' };
   }
 }
 
@@ -102,17 +106,12 @@ export async function extractFromCV(
 
   const res = await fetch(`${BASE_URL}/portfolio/extract`, {
     method: 'POST',
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-    },
+    headers: { Authorization: `Bearer ${accessToken}` },
     body: formData,
   });
-
   if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
-    throw { status: res.status, message: body.message ?? 'Extraction failed' };
+    throw { status: res.status, message: 'Failed to extract portfolio points from CV.' };
   }
-
   return res.json();
 }
 
@@ -135,3 +134,5 @@ export async function batchCreateItems(
     body: JSON.stringify(payload),
   });
 }
+
+

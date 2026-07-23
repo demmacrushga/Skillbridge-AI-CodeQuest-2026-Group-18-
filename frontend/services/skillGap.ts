@@ -4,17 +4,22 @@ import { type GapReport } from '@/types/skillGap';
 const BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:8080';
 
 async function request<T>(path: string, accessToken: string, options: RequestInit): Promise<T> {
-  const res = await fetch(`${BASE_URL}${path}`, {
-    ...options,
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      ...options.headers,
-    },
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${BASE_URL}${path}`, {
+      ...options,
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        ...options.headers,
+      },
+    });
+  } catch (err) {
+    throw { status: 0, message: 'SkillBridge skill gap service is currently unavailable. Please check your network connection.' };
+  }
 
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
-    throw { status: res.status, message: body.message ?? body.error ?? 'Request failed' };
+    throw { status: res.status, message: body.message ?? body.error ?? `Request failed (${res.status})` };
   }
 
   return res.json();
@@ -33,7 +38,6 @@ export async function analyseCV(
   } as any);
   formData.append('targetRole', targetRole);
 
-  // Do NOT set Content-Type — fetch sets the multipart boundary automatically
   return request<GapReport>('/skill-gap/analyse', token, {
     method: 'POST',
     body: formData,
@@ -55,6 +59,8 @@ export async function deleteReport(token: string, reportId: string): Promise<voi
   });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
-    throw { status: res.status, message: body.error ?? body.message ?? 'Delete failed' };
+    throw { status: res.status, message: body.error ?? body.message ?? 'Delete failed.' };
   }
 }
+
+

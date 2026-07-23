@@ -13,24 +13,28 @@ import {
 const BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:8080';
 
 async function request<T>(path: string, accessToken: string, options: RequestInit): Promise<T> {
-  const res = await fetch(`${BASE_URL}${path}`, {
-    ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${accessToken}`,
-      ...options.headers,
-    },
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${BASE_URL}${path}`, {
+      ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${accessToken}`,
+        ...options.headers,
+      },
+    });
+  } catch (err) {
+    throw { status: 0, message: 'SkillBridge challenge service is currently unavailable. Please check your network connection.' };
+  }
 
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
-    throw { status: res.status, message: body.error ?? body.message ?? 'Request failed' };
+    throw { status: res.status, message: body.message ?? body.error ?? `Request failed (${res.status})` };
   }
 
   return res.json();
 }
 
-// ── US1: Recruiter posts a challenge ───────────────────────────────────
 export async function postChallenge(
   token: string,
   payload: PostChallengePayload
@@ -41,12 +45,10 @@ export async function postChallenge(
   });
 }
 
-// ── US2: Browse active challenges ──────────────────────────────────────
 export async function getChallenges(token: string): Promise<ChallengeList> {
   return request<ChallengeList>('/challenge', token, { method: 'GET' });
 }
 
-// ── US3: Submit a solution ─────────────────────────────────────────────
 export async function submit(
   token: string,
   challengeId: string,
@@ -58,12 +60,10 @@ export async function submit(
   });
 }
 
-// ── US4: My submissions ────────────────────────────────────────────────
 export async function getMySubmissions(token: string): Promise<MySubmission[]> {
   return request<MySubmission[]>('/challenge/my-submissions', token, { method: 'GET' });
 }
 
-// ── US5: Score submissions (recruiter) ─────────────────────────────────
 export async function getSubmissions(token: string, challengeId: string): Promise<SubmissionReview[]> {
   return request<SubmissionReview[]>(`/challenge/${challengeId}/submissions`, token, {
     method: 'GET',
@@ -83,12 +83,10 @@ export async function scoreSubmission(
   );
 }
 
-// ── US6: Leaderboard ───────────────────────────────────────────────────
 export async function getLeaderboard(token: string, challengeId: string): Promise<Leaderboard> {
   return request<Leaderboard>(`/challenge/${challengeId}/leaderboard`, token, { method: 'GET' });
 }
 
-// ── US7: Recruiter management ──────────────────────────────────────────
 export async function getMyChallenges(token: string): Promise<Challenge[]> {
   return request<Challenge[]>('/challenge/mine', token, { method: 'GET' });
 }
@@ -96,3 +94,7 @@ export async function getMyChallenges(token: string): Promise<Challenge[]> {
 export async function deactivate(token: string, challengeId: string): Promise<Challenge> {
   return request<Challenge>(`/challenge/${challengeId}/deactivate`, token, { method: 'POST' });
 }
+
+
+
+

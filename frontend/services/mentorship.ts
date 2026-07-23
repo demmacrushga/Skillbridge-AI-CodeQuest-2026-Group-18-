@@ -13,18 +13,23 @@ import {
 const BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:8080';
 
 async function request<T>(path: string, accessToken: string, options: RequestInit): Promise<T> {
-  const res = await fetch(`${BASE_URL}${path}`, {
-    ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${accessToken}`,
-      ...options.headers,
-    },
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${BASE_URL}${path}`, {
+      ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${accessToken}`,
+        ...options.headers,
+      },
+    });
+  } catch (err) {
+    throw { status: 0, message: 'SkillBridge mentorship service is currently unavailable. Please check your network connection.' };
+  }
 
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
-    throw { status: res.status, message: body.error ?? body.message ?? 'Request failed' };
+    throw { status: res.status, message: body.error ?? body.message ?? `Request failed (${res.status})` };
   }
 
   return res.json();
@@ -74,14 +79,14 @@ export async function sendRequest(
   });
 }
 
+export async function getMyRequests(token: string): Promise<MentorshipRequest[]> {
+  return request<MentorshipRequest[]>('/mentorship/requests/mine', token, { method: 'GET' });
+}
+
 export async function cancelRequest(token: string, requestId: string): Promise<MentorshipRequest> {
   return request<MentorshipRequest>(`/mentorship/requests/${requestId}/cancel`, token, {
     method: 'POST',
   });
-}
-
-export async function getMyRequests(token: string): Promise<MentorshipRequest[]> {
-  return request<MentorshipRequest[]>('/mentorship/requests/mine', token, { method: 'GET' });
 }
 
 // ── US4: Respond to requests (alumni) ──────────────────────────────────
@@ -125,3 +130,4 @@ export async function sendMessage(
     body: JSON.stringify(payload),
   });
 }
+

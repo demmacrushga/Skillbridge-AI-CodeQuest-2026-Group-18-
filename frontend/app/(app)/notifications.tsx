@@ -7,6 +7,7 @@ import {
   FlatList,
   RefreshControl,
   Switch,
+  BackHandler,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, router } from 'expo-router';
@@ -120,9 +121,19 @@ export default function NotificationsScreen() {
     }
   }, [token]);
 
+  function handleGoBack() {
+    router.replace('/(app)/profile');
+  }
+
   useFocusEffect(
     useCallback(() => {
       load();
+      const onBackPress = () => {
+        router.replace('/(app)/profile');
+        return true;
+      };
+      const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+      return () => subscription.remove();
     }, [load])
   );
 
@@ -244,7 +255,7 @@ export default function NotificationsScreen() {
     <SafeAreaView style={styles.container} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+        <TouchableOpacity onPress={handleGoBack} style={styles.backBtn} accessibilityLabel="Back to Profile">
           <Ionicons name="arrow-back" size={22} color={colors.primary} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Notifications</Text>

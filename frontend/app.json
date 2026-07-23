@@ -8,7 +8,7 @@
     "scheme": "skillbridge",
     "userInterfaceStyle": "light",
     "splash": {
-      "image": "./assets/images/official-logo.png",
+      "image": "./assets/images/splash-icon.png",
       "resizeMode": "contain",
       "backgroundColor": "#FFFFFF"
     },

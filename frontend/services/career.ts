@@ -10,18 +10,23 @@ import { addExp, unlockAchievement } from './achievements';
 const BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:8080';
 
 async function request<T>(path: string, accessToken: string, options: RequestInit): Promise<T> {
-  const res = await fetch(`${BASE_URL}${path}`, {
-    ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${accessToken}`,
-      ...options.headers,
-    },
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${BASE_URL}${path}`, {
+      ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${accessToken}`,
+        ...options.headers,
+      },
+    });
+  } catch (err) {
+    throw { status: 0, message: 'SkillBridge career service is currently unavailable. Please try again later.' };
+  }
 
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
-    throw { status: res.status, message: body.message ?? 'Request failed' };
+    throw { status: res.status, message: body.message ?? body.error ?? `Request failed (${res.status})` };
   }
 
   return res.json();
@@ -30,8 +35,7 @@ async function request<T>(path: string, accessToken: string, options: RequestIni
 export async function getCareerPaths(): Promise<CareerPath[]> {
   const res = await fetch(`${BASE_URL}/career/paths`);
   if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
-    throw { status: res.status, message: body.message ?? 'Failed to load career paths' };
+    throw { status: res.status, message: 'Unable to fetch career paths from server.' };
   }
   return res.json();
 }
@@ -65,14 +69,15 @@ export async function completeMilestone(
     method: 'PATCH',
     body: JSON.stringify(payload ?? {}),
   });
-  
-  // Local EXP logic
+
   try {
     await addExp(userId, 200);
     await unlockAchievement(userId, 'ach_5');
   } catch (e) {
-    console.error('Failed to update EXP locally', e);
+    console.error('Failed to update EXP:', e);
   }
-  
   return response;
 }
+
+
+

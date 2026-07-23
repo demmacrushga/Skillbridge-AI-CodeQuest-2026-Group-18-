@@ -33,6 +33,7 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class MockInterviewServiceImpl implements MockInterviewService {
 
+    private static final long MAX_AUDIO_BYTES = 25 * 1024 * 1024L;
     private static final Set<String> ALLOWED_AUDIO_TYPES = Set.of(
             "audio/mpeg", "audio/mp3", "audio/m4a", "audio/x-m4a", "audio/mp4",
             "audio/aac", "audio/wav", "audio/x-wav", "audio/webm", "audio/ogg",

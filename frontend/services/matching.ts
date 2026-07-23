@@ -11,14 +11,19 @@ import {
 const BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:8080';
 
 async function request<T>(path: string, accessToken: string, options: RequestInit): Promise<T> {
-  const res = await fetch(`${BASE_URL}${path}`, {
-    ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${accessToken}`,
-      ...options.headers,
-    },
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${BASE_URL}${path}`, {
+      ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${accessToken}`,
+        ...options.headers,
+      },
+    });
+  } catch (err) {
+    throw { status: 0, message: 'SkillBridge matching service is currently unavailable. Please check your network connection.' };
+  }
 
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
@@ -35,7 +40,6 @@ async function request<T>(path: string, accessToken: string, options: RequestIni
   return res.json();
 }
 
-// ── US1: Recruiter posts an opportunity ────────────────────────────────
 export async function postOpportunity(
   token: string,
   payload: PostOpportunityPayload
@@ -46,24 +50,20 @@ export async function postOpportunity(
   });
 }
 
-// ── US2: Ranked matches ────────────────────────────────────────────────
 export async function getMatches(token: string): Promise<MatchList> {
   return request<MatchList>('/matching/opportunities', token, { method: 'GET' });
 }
 
-// ── US3: Apply ─────────────────────────────────────────────────────────
 export async function apply(token: string, opportunityId: string): Promise<ApplicationResult> {
   return request<ApplicationResult>(`/matching/opportunities/${opportunityId}/apply`, token, {
     method: 'POST',
   });
 }
 
-// ── US4: My applications ───────────────────────────────────────────────
 export async function getApplications(token: string): Promise<ApplicationWithOpportunity[]> {
   return request<ApplicationWithOpportunity[]>('/matching/applications', token, { method: 'GET' });
 }
 
-// ── US5: Skill profile ─────────────────────────────────────────────────
 export async function getSkills(token: string): Promise<string[]> {
   const res = await request<{ skills: string[] }>('/matching/profile/skills', token, {
     method: 'GET',
@@ -80,7 +80,6 @@ export async function updateSkills(token: string, skills: string[]): Promise<str
   return res.skills;
 }
 
-// ── US6: Recruiter management ──────────────────────────────────────────
 export async function getMyPostings(token: string): Promise<Opportunity[]> {
   return request<Opportunity[]>('/matching/opportunities/mine', token, { method: 'GET' });
 }
@@ -96,3 +95,6 @@ export async function getApplicants(token: string, opportunityId: string): Promi
     method: 'GET',
   });
 }
+
+
+
