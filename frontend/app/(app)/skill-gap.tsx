@@ -17,7 +17,8 @@ import * as DocumentPicker from 'expo-document-picker';
 import { DocumentPickerAsset } from 'expo-document-picker';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useAuth } from '@/context/AuthContext';
-import { colors, typography, spacing, radius } from '@/constants/theme';
+import { useTheme, useThemeStyles } from '@/context/ThemeContext';
+import { typography, spacing, radius, type ThemeColors } from '@/constants/theme';
 import { analyseCV, getReports, deleteReport } from '@/services/skillGap';
 import { type GapReport } from '@/types/skillGap';
 import { AnimatedFadeIn, AnimatedPressable, ActiveText } from '@/components/ui/AnimatedView';
@@ -35,11 +36,11 @@ function usePulse() {
   return anim;
 }
 
-function getPriorityColor(gapCount: number) {
+function getPriorityColor(gapCount: number, secondaryColor: string) {
   if (gapCount >= 5) return '#DC2626';
   if (gapCount >= 3) return '#EA580C';
   if (gapCount >= 1) return '#CA8A04';
-  return colors.secondary;
+  return secondaryColor;
 }
 
 function ReportRow({
@@ -53,10 +54,12 @@ function ReportRow({
   onDelete: () => void;
   isDeleting: boolean;
 }) {
+  const { colors } = useTheme();
+  const styles = useThemeStyles(createStyles);
   const dateStr = report.createdAt
     ? new Date(report.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
     : '';
-  const gapColor = getPriorityColor(report.gaps.length);
+  const gapColor = getPriorityColor(report.gaps.length, colors.secondary);
 
   return (
     <AnimatedPressable style={styles.reportRow} onPress={onPress}>
@@ -91,6 +94,8 @@ function ReportRow({
 
 export default function SkillGapScreen() {
   const { state } = useAuth();
+  const { colors } = useTheme();
+  const styles = useThemeStyles(createStyles);
   const token = state.accessToken;
   const pulseOpacity = usePulse();
 
@@ -359,7 +364,8 @@ export default function SkillGapScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.surface,

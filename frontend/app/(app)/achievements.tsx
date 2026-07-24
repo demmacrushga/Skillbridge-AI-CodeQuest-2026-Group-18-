@@ -3,8 +3,9 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { colors, typography, spacing, radius } from '@/constants/theme';
+import { typography, spacing, radius, type ThemeColors } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
+import { useTheme, useThemeStyles } from '@/context/ThemeContext';
 import { getUserAchievements, getUserExp } from '@/services/achievements';
 import { Achievement, UserExp } from '@/types/achievements';
 import { AnimatedFadeIn } from '@/components/ui/AnimatedView';
@@ -12,6 +13,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 
 export default function AchievementsScreen() {
   const { state } = useAuth();
+  const { colors } = useTheme();
+  const styles = useThemeStyles(createStyles);
   const [achievements, setAchievements] = useState<Achievement[]>([]);
   const [expState, setExpState] = useState<UserExp | null>(null);
   const [loading, setLoading] = useState(true);
@@ -167,7 +170,8 @@ export default function AchievementsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.surface },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.surface },
   

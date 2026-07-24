@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,13 +8,13 @@ import {
   ScrollView,
   Animated,
 } from 'react-native';
-import React, { useRef, useEffect } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useAuth } from '@/context/AuthContext';
 import { type UserRole } from '@/services/auth';
-import { colors, typography, spacing, radius } from '@/constants/theme';
+import { useTheme, useThemeStyles } from '@/context/ThemeContext';
+import { typography, spacing, radius, type ThemeColors } from '@/constants/theme';
 import { AnimatedFadeIn, AnimatedPressable } from '@/components/ui/AnimatedView';
 
 const ROLES: { value: UserRole; label: string; description: string; badge: string; icon: keyof typeof Ionicons.glyphMap }[] = [
@@ -42,6 +42,8 @@ const ROLES: { value: UserRole; label: string; description: string; badge: strin
 ];
 
 export default function RoleSelectScreen() {
+  const { colors } = useTheme();
+  const styles = useMemo(() => getStyles(colors), [colors]);
   const { register } = useAuth();
   const rawParams = useLocalSearchParams();
   const firstName = Array.isArray(rawParams.firstName) ? rawParams.firstName[0] : (rawParams.firstName as string) || '';
@@ -154,7 +156,7 @@ export default function RoleSelectScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors: ThemeColors) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.surface },
   scroll: { flexGrow: 1, padding: spacing.lg },
   backBtn: {
@@ -267,6 +269,8 @@ const styles = StyleSheet.create({
 });
 
 function RoleCard({ role, isSelected, onPress, delay }: any) {
+  const { colors } = useTheme();
+  const styles = useThemeStyles(getStyles);
   const scale = useRef(new Animated.Value(isSelected ? 1.03 : 1)).current;
 
   useEffect(() => {

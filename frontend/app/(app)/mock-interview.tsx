@@ -15,7 +15,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useFocusEffect } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useAuth } from '@/context/AuthContext';
-import { colors, typography, spacing, radius } from '@/constants/theme';
+import { useTheme, useThemeStyles } from '@/context/ThemeContext';
+import { typography, spacing, radius, type ThemeColors } from '@/constants/theme';
 import { startSession, getSessions, deleteSession } from '@/services/mockInterview';
 import { type Difficulty, type SessionSummary } from '@/types/mockInterview';
 
@@ -38,10 +39,6 @@ function usePulse() {
   return anim;
 }
 
-function statusColor(status: SessionSummary['status']) {
-  return status === 'COMPLETED' ? colors.secondary : colors.tertiary;
-}
-
 function SessionRow({
   session,
   onPress,
@@ -53,6 +50,8 @@ function SessionRow({
   onLongPress: () => void;
   isDeleting: boolean;
 }) {
+  const { colors } = useTheme();
+  const styles = useThemeStyles(createStyles);
   const dateStr = session.createdAt
     ? new Date(session.createdAt).toLocaleDateString('en-GB', {
         day: 'numeric',
@@ -60,7 +59,7 @@ function SessionRow({
         year: 'numeric',
       })
     : '';
-  const accent = statusColor(session.status);
+  const accent = session.status === 'COMPLETED' ? colors.secondary : colors.tertiary;
 
   return (
     <TouchableOpacity
@@ -95,6 +94,8 @@ function SessionRow({
 
 export default function MockInterviewScreen() {
   const { state } = useAuth();
+  const { colors } = useTheme();
+  const styles = useThemeStyles(createStyles);
   const token = state.accessToken;
   const pulseOpacity = usePulse();
 
@@ -332,7 +333,8 @@ export default function MockInterviewScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.surface },
   header: {
     flexDirection: 'row',

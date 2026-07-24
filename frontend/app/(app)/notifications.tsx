@@ -16,7 +16,8 @@ import { Skeleton } from '@/components/ui/Skeleton';
 import { showToast } from '@/components/ui/Toast';
 import { AnimatedPressable, ActiveText } from '@/components/ui/AnimatedView';
 import { useAuth } from '@/context/AuthContext';
-import { colors, typography, spacing, radius } from '@/constants/theme';
+import { useTheme, useThemeStyles } from '@/context/ThemeContext';
+import { typography, spacing, radius, type ThemeColors } from '@/constants/theme';
 import {
   type Notification,
   type NotificationType,
@@ -82,6 +83,8 @@ const DEMO_NOTIFICATIONS: Notification[] = [
 
 export default function NotificationsScreen() {
   const { state } = useAuth();
+  const { colors } = useTheme();
+  const styles = useThemeStyles(createStyles);
   const token = state.accessToken;
 
   const [notifications, setNotifications] = useState<Notification[]>(DEMO_NOTIFICATIONS);
@@ -346,7 +349,8 @@ export default function NotificationsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.surface },
 
   header: {

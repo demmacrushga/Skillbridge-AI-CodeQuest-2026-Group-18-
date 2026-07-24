@@ -117,13 +117,15 @@ export function AnimatedFadeIn({
 interface AnimatedPressableProps extends TouchableOpacityProps {
   scaleTo?: number;
   activeFillColor?: string;
+  pressFillColor?: string;
   isActive?: boolean;
   children: React.ReactNode;
 }
 
 export function AnimatedPressable({
-  scaleTo = 0.94,
-  activeFillColor = colors.secondary, // Exact App Royal Blue (#2563EB) Fill
+  scaleTo = 0.97,
+  activeFillColor = colors.secondary,
+  pressFillColor = 'rgba(37, 99, 235, 0.08)',
   isActive = false,
   style,
   onPressIn,
@@ -133,16 +135,17 @@ export function AnimatedPressable({
   ...props
 }: AnimatedPressableProps) {
   const scale = useRef(new Animated.Value(1)).current;
-  const fillAnim = useRef(new Animated.Value(isActive ? 1 : 0)).current;
+  const activeAnim = useRef(new Animated.Value(isActive ? 1 : 0)).current;
+  const pressAnim = useRef(new Animated.Value(0)).current;
 
   // React to programmatic changes in isActive
   useEffect(() => {
-    Animated.timing(fillAnim, {
+    Animated.timing(activeAnim, {
       toValue: isActive ? 1 : 0,
-      duration: isActive ? 250 : 400,
+      duration: isActive ? 250 : 300,
       useNativeDriver: false,
     }).start();
-  }, [isActive, fillAnim]);
+  }, [isActive, activeAnim]);
 
   const handlePressIn = (e: any) => {
     Animated.parallel([
@@ -150,38 +153,31 @@ export function AnimatedPressable({
         toValue: scaleTo,
         useNativeDriver: false,
         speed: 32,
-        bounciness: 5,
+        bounciness: 4,
       }),
-      ...(isActive ? [] : [
-        Animated.timing(fillAnim, {
-          toValue: 1,
-          duration: 80,
-          useNativeDriver: false,
-        })
-      ]),
+      Animated.timing(pressAnim, {
+        toValue: 1,
+        duration: 80,
+        useNativeDriver: false,
+      }),
     ]).start();
     if (onPressIn) onPressIn(e);
   };
 
   const handlePressOut = (e: any) => {
-    // Hold vivid blue fill for half a second (500ms) after touch release
-    setTimeout(() => {
-      Animated.parallel([
-        Animated.spring(scale, {
-          toValue: 1,
-          useNativeDriver: false,
-          speed: 18,
-          bounciness: 4,
-        }),
-        ...(isActive ? [] : [
-          Animated.timing(fillAnim, {
-            toValue: 0,
-            duration: 400,
-            useNativeDriver: false,
-          })
-        ]),
-      ]).start();
-    }, 500); // 500ms = half a second hold duration
+    Animated.parallel([
+      Animated.spring(scale, {
+        toValue: 1,
+        useNativeDriver: false,
+        speed: 24,
+        bounciness: 3,
+      }),
+      Animated.timing(pressAnim, {
+        toValue: 0,
+        duration: 150,
+        useNativeDriver: false,
+      }),
+    ]).start();
     if (onPressOut) onPressOut(e);
   };
 
@@ -192,9 +188,18 @@ export function AnimatedPressable({
     });
   };
 
-  const overlayBackground = fillAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['rgba(0,0,0,0)', activeFillColor],
+  const overlayBackground = Animated.add(
+    activeAnim.interpolate({
+      inputRange: [0, 1],
+      outputRange: [0, 1],
+    }),
+    pressAnim.interpolate({
+      inputRange: [0, 1],
+      outputRange: [0, isActive ? 0 : 1],
+    })
+  ).interpolate({
+    inputRange: [0, 1, 2],
+    outputRange: ['rgba(0,0,0,0)', isActive ? activeFillColor : pressFillColor, activeFillColor],
   });
 
   const flattenedStyle = StyleSheet.flatten(style) as ViewStyle | undefined;
@@ -204,15 +209,15 @@ export function AnimatedPressable({
 
   return (
     <TouchableOpacity
-      activeOpacity={0.8}
+      activeOpacity={0.85}
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
       onPress={handlePress}
       {...props}
     >
-      <PressActiveContext.Provider value={fillAnim}>
+      <PressActiveContext.Provider value={activeAnim}>
         <Animated.View style={[style, { transform: combinedTransforms, overflow: 'hidden' }]}>
-          {/* Blue fill overlay sits BEHIND children so text is always on top */}
+          {/* Subtle press / active fill overlay */}
           <Animated.View
             style={[
               StyleSheet.absoluteFillObject,

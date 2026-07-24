@@ -11,10 +11,14 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, router } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { colors, typography, spacing, radius } from '@/constants/theme';
+import { typography, spacing, radius, type ThemeColors } from '@/constants/theme';
+import { useTheme, useThemeStyles } from '@/context/ThemeContext';
 import { AnimatedFadeIn } from '@/components/ui/AnimatedView';
 
 export default function AboutScreen() {
+  const { colors } = useTheme();
+  const styles = useThemeStyles(createStyles);
+
   function handleGoBack() {
     router.replace('/(app)/profile');
   }
@@ -114,86 +118,86 @@ export default function AboutScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.surface },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.md,
-    backgroundColor: colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.outlineVariant,
-  },
-  backBtn: { padding: spacing.xs },
-  headerTitle: { ...typography.headlineSm, color: colors.onSurface, marginLeft: spacing.xs },
+const createStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
+    container: { flex: 1, backgroundColor: colors.surface },
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: spacing.sm,
+      paddingVertical: spacing.md,
+      backgroundColor: colors.surface,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.outlineVariant,
+    },
+    backBtn: { padding: spacing.xs },
+    headerTitle: { ...typography.headlineSm, color: colors.onSurface, marginLeft: spacing.xs },
 
-  scrollContent: { padding: spacing.md, paddingBottom: spacing.xxl },
+    scrollContent: { padding: spacing.md, paddingBottom: spacing.xxl },
 
-  /* Emerald Green Hero Card */
-  brandHeroCard: {
-    backgroundColor: colors.secondary,
-    borderRadius: radius.xl,
-    padding: spacing.xl,
-    alignItems: 'center',
-    marginBottom: spacing.xl,
-    shadowColor: colors.secondary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 10,
-    elevation: 3,
-  },
-  logoMark: {
-    width: 72,
-    height: 72,
-    borderRadius: 22,
-    backgroundColor: `${colors.onPrimary}25`,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: spacing.md,
-  },
-  brandTitle: { ...typography.headlineLg, fontSize: 26, color: colors.onPrimary },
-  versionBadge: { ...typography.labelSm, color: `${colors.onPrimary}80`, marginTop: 2, marginBottom: spacing.sm },
-  brandDesc: { ...typography.bodyMd, color: `${colors.onPrimary}95`, textAlign: 'center', lineHeight: 22 },
+    brandHeroCard: {
+      backgroundColor: colors.secondary,
+      borderRadius: radius.xl,
+      padding: spacing.xl,
+      alignItems: 'center',
+      marginBottom: spacing.xl,
+      shadowColor: colors.secondary,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.15,
+      shadowRadius: 10,
+      elevation: 3,
+    },
+    logoMark: {
+      width: 72,
+      height: 72,
+      borderRadius: 22,
+      backgroundColor: 'rgba(255, 255, 255, 0.25)',
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: spacing.md,
+    },
+    brandTitle: { ...typography.headlineLg, fontSize: 26, color: '#FFFFFF' },
+    versionBadge: { ...typography.labelSm, color: 'rgba(255, 255, 255, 0.8)', marginTop: 2, marginBottom: spacing.sm },
+    brandDesc: { ...typography.bodyMd, color: 'rgba(255, 255, 255, 0.95)', textAlign: 'center', lineHeight: 22 },
 
-  sectionTitle: { ...typography.headlineSm, fontSize: 18, color: colors.onSurface, marginBottom: spacing.md },
+    sectionTitle: { ...typography.headlineSm, fontSize: 18, color: colors.onSurface, marginBottom: spacing.md },
 
-  featuresCard: {
-    backgroundColor: colors.surfaceCard,
-    borderRadius: radius.xl,
-    padding: spacing.md,
-    borderWidth: 1,
-    borderColor: colors.outlineVariant,
-    marginBottom: spacing.xl,
-  },
-  featureRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingVertical: spacing.xs },
-  featureIconWrap: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  featureTitle: { ...typography.labelMd, color: colors.onSurface },
-  featureDesc: { ...typography.bodySm, color: colors.onSurfaceVariant, marginTop: 2 },
-  divider: { height: 1, backgroundColor: colors.outlineVariant, marginVertical: spacing.md },
+    featuresCard: {
+      backgroundColor: colors.surfaceCard,
+      borderRadius: radius.xl,
+      padding: spacing.md,
+      borderWidth: 1,
+      borderColor: colors.outlineVariant,
+      marginBottom: spacing.xl,
+    },
+    featureRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingVertical: spacing.xs },
+    featureIconWrap: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    featureTitle: { ...typography.labelMd, color: colors.onSurface },
+    featureDesc: { ...typography.bodySm, color: colors.onSurfaceVariant, marginTop: 2 },
+    divider: { height: 1, backgroundColor: colors.outlineVariant, marginVertical: spacing.md },
 
-  infoBox: {
-    backgroundColor: `${colors.secondary}10`,
-    padding: spacing.md,
-    borderRadius: radius.md,
-    marginBottom: spacing.md,
-    borderWidth: 1,
-    borderColor: `${colors.secondary}20`,
-  },
-  infoBoxText: { ...typography.bodySm, color: colors.onSurface, lineHeight: 20, textAlign: 'center' },
+    infoBox: {
+      backgroundColor: `${colors.secondary}10`,
+      padding: spacing.md,
+      borderRadius: radius.md,
+      marginBottom: spacing.md,
+      borderWidth: 1,
+      borderColor: `${colors.secondary}20`,
+    },
+    infoBoxText: { ...typography.bodySm, color: colors.onSurface, lineHeight: 20, textAlign: 'center' },
 
-  legalBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    paddingVertical: spacing.md,
-  },
-  legalBtnText: { ...typography.labelMd, color: colors.secondary },
-});
+    legalBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 6,
+      paddingVertical: spacing.md,
+    },
+    legalBtnText: { ...typography.labelMd, color: colors.secondary },
+  });

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -16,12 +16,15 @@ import { router } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useAuth } from '@/context/AuthContext';
 import { forgotPassword } from '@/services/auth';
-import { colors, typography, spacing, radius } from '@/constants/theme';
+import { useTheme } from '@/context/ThemeContext';
+import { typography, spacing, radius, type ThemeColors } from '@/constants/theme';
 import { AnimatedFadeIn, AnimatedPressable } from '@/components/ui/AnimatedView';
 import { AnimatedTextInput } from '@/components/ui/AnimatedTextInput';
 
 export default function LoginScreen() {
+  const { colors } = useTheme();
   const { login } = useAuth();
+  const styles = useMemo(() => getStyles(colors), [colors]);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -263,7 +266,7 @@ export default function LoginScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors: ThemeColors) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.surface },
   scroll: { flexGrow: 1, padding: spacing.lg },
 

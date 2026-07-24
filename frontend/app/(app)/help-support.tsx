@@ -13,7 +13,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, router } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { colors, typography, spacing, radius } from '@/constants/theme';
+import { typography, spacing, radius, type ThemeColors } from '@/constants/theme';
+import { useTheme, useThemeStyles } from '@/context/ThemeContext';
 import { AnimatedFadeIn } from '@/components/ui/AnimatedView';
 import { useAuth } from '@/context/AuthContext';
 
@@ -37,6 +38,8 @@ const FAQS = [
 ];
 
 export default function HelpSupportScreen() {
+  const { colors } = useTheme();
+  const styles = useThemeStyles(createStyles);
   const { state } = useAuth();
   const user = state.user;
 
@@ -212,7 +215,8 @@ export default function HelpSupportScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.surface },
   header: {
     flexDirection: 'row',

@@ -14,7 +14,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useAuth } from '@/context/AuthContext';
-import { colors, typography, spacing, radius } from '@/constants/theme';
+import { useTheme, useThemeStyles } from '@/context/ThemeContext';
+import { typography, spacing, radius, type ThemeColors } from '@/constants/theme';
 import { SkeletonChallengeCard } from '@/components/ui/SkeletonCard';
 import { AnimatedFadeIn, AnimatedPressable, ActiveText } from '@/components/ui/AnimatedView';
 import {
@@ -41,7 +42,9 @@ function deadlineStr(iso: string) {
   });
 }
 
-function LeaderboardList({ challengeId, token }: { challengeId: string; token: string }) {
+function LeaderboardView({ token, challengeId }: { token: string; challengeId: string }) {
+  const { colors } = useTheme();
+  const styles = useThemeStyles(createStyles);
   const [entries, setEntries] = useState<LeaderboardEntry[] | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -92,19 +95,19 @@ function ChallengeCard({
   onToggle,
   onSubmit,
   isSubmitting,
-  url,
-  onUrlChange,
   token,
 }: {
   challenge: ChallengeListEntry;
   expanded: boolean;
   onToggle: () => void;
-  onSubmit: () => void;
+  onSubmit: (repoUrl: string) => void;
   isSubmitting: boolean;
-  url: string;
-  onUrlChange: (v: string) => void;
   token: string;
 }) {
+  const { colors } = useTheme();
+  const styles = useThemeStyles(createStyles);
+  const [repoUrl, setRepoUrl] = useState('');
+
   return (
     <AnimatedPressable style={styles.card} onPress={onToggle}>
       <View style={styles.cardHead}>
@@ -148,12 +151,12 @@ function ChallengeCard({
                 autoCapitalize="none"
                 autoCorrect={false}
                 keyboardType="url"
-                value={url}
-                onChangeText={onUrlChange}
+                value={repoUrl}
+                onChangeText={setRepoUrl}
               />
               <TouchableOpacity
                 style={[styles.submitBtn, isSubmitting && styles.submitBtnDisabled]}
-                onPress={onSubmit}
+                onPress={() => onSubmit(repoUrl)}
                 disabled={isSubmitting}
                 activeOpacity={0.85}
               >
@@ -166,7 +169,7 @@ function ChallengeCard({
             </View>
           )}
 
-          <LeaderboardList challengeId={challenge.id} token={token} />
+          <LeaderboardView challengeId={challenge.id} token={token} />
         </View>
       ) : null}
     </AnimatedPressable>
@@ -175,6 +178,8 @@ function ChallengeCard({
 
 export default function ChallengesScreen() {
   const { state } = useAuth();
+  const { colors } = useTheme();
+  const styles = useThemeStyles(createStyles);
   const token = state.accessToken ?? '';
 
   const [challenges, setChallenges] = useState<ChallengeListEntry[]>([]);
@@ -214,9 +219,9 @@ export default function ChallengesScreen() {
 
   useFocusEffect(useCallback(() => { load(); }, [load]));
 
-  const handleSubmit = async (challenge: ChallengeListEntry) => {
+  const handleSubmit = async (challenge: ChallengeListEntry, repoUrl?: string) => {
     const id = challenge.id;
-    const url = (urls[id] ?? '').trim();
+    const url = (repoUrl ?? urls[id] ?? '').trim();
     if (!url) {
       Alert.alert('Add your link', 'Paste the link to your solution first');
       return;
@@ -315,10 +320,8 @@ export default function ChallengesScreen() {
                   token={token}
                   expanded={expandedId === c.id}
                   onToggle={() => setExpandedId(prev => (prev === c.id ? null : c.id))}
-                  onSubmit={() => handleSubmit(c)}
+                  onSubmit={(repoUrl: string) => handleSubmit(c, repoUrl)}
                   isSubmitting={submittingId === c.id}
-                  url={urls[c.id] ?? ''}
-                  onUrlChange={v => setUrls(prev => ({ ...prev, [c.id]: v }))}
                 />
               ))}
             </View>
@@ -374,7 +377,8 @@ export default function ChallengesScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.surface },
   header: {
     flexDirection: 'row',

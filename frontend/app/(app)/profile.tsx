@@ -9,6 +9,7 @@ import {
   Modal,
   Alert,
   ActivityIndicator,
+  Switch,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, router } from 'expo-router';
@@ -17,7 +18,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { SkeletonProfile } from '@/components/ui/SkeletonCard';
 import { NaviiAvatar } from '@/components/NaviiAvatar';
 import { useAuth } from '@/context/AuthContext';
-import { colors, typography, spacing, radius } from '@/constants/theme';
+import { useTheme, useThemeStyles } from '@/context/ThemeContext';
+import { typography, spacing, radius, type ThemeColors } from '@/constants/theme';
 import { AnimatedFadeIn, AnimatedPressable, ActiveText } from '@/components/ui/AnimatedView';
 import { AnimatedTextInput } from '@/components/ui/AnimatedTextInput';
 import { getRoadmap } from '@/services/career';
@@ -35,6 +37,8 @@ interface InfoRowProps {
 }
 
 function InfoRow({ icon, label, value, onPress }: InfoRowProps) {
+  const { colors } = useTheme();
+  const styles = useThemeStyles(createStyles);
   if (onPress) {
     return (
       <AnimatedPressable style={styles.infoRow} onPress={onPress}>
@@ -70,6 +74,8 @@ interface SettingsRowProps {
 }
 
 function SettingsRow({ icon, label, onPress, color }: SettingsRowProps) {
+  const { colors } = useTheme();
+  const styles = useThemeStyles(createStyles);
   return (
     <AnimatedPressable style={styles.settingsRow} onPress={onPress}>
       <View style={[styles.settingsIconWrap, color ? { backgroundColor: `${color}15` } : {}]}>
@@ -83,6 +89,8 @@ function SettingsRow({ icon, label, onPress, color }: SettingsRowProps) {
 
 export default function ProfileScreen() {
   const { state, logout } = useAuth();
+  const { colors, isDarkMode, toggleTheme } = useTheme();
+  const styles = useThemeStyles(createStyles);
   const user = state.user;
 
   const initials = `${user?.firstName?.[0] ?? ''}${user?.lastName?.[0] ?? ''}`.toUpperCase() || '?';
@@ -307,6 +315,19 @@ export default function ProfileScreen() {
                   onPress={() => router.push('./notifications')}
                 />
                 <View style={styles.rowDivider} />
+                <View style={styles.settingsRow}>
+                  <View style={[styles.settingsIconWrap, { backgroundColor: `${colors.quaternary}15` }]}>
+                    <Ionicons name={isDarkMode ? 'moon' : 'sunny'} size={16} color={colors.quaternary} />
+                  </View>
+                  <ActiveText style={styles.settingsLabel}>{isDarkMode ? 'Dark Mode' : 'Light Mode'}</ActiveText>
+                  <Switch
+                    value={isDarkMode}
+                    onValueChange={toggleTheme}
+                    trackColor={{ false: colors.outlineVariant, true: colors.secondary }}
+                    thumbColor={isDarkMode ? colors.onPrimary : colors.onSurface}
+                  />
+                </View>
+                <View style={styles.rowDivider} />
                 <SettingsRow
                   icon="lock-closed-outline"
                   label="Change Password"
@@ -418,7 +439,8 @@ export default function ProfileScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.surface },
 
   header: {

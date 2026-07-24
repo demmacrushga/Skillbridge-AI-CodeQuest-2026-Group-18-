@@ -95,22 +95,30 @@ export async function generateShareLink(accessToken: string): Promise<ShareLinkR
 
 export async function extractFromCV(
   accessToken: string,
-  file: DocumentPickerAsset
+  file: DocumentPickerAsset | { uri: string; name: string; mimeType?: string; type?: string }
 ): Promise<ExtractedItem[]> {
   const formData = new FormData();
+  const f = file as any;
   formData.append('file', {
-    uri: file.uri,
-    name: file.name,
-    type: file.mimeType ?? 'application/pdf',
+    uri: f.uri,
+    name: f.name || 'resume.pdf',
+    type: f.mimeType || f.type || 'application/pdf',
   } as any);
 
-  const res = await fetch(`${BASE_URL}/portfolio/extract`, {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${accessToken}` },
-    body: formData,
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${BASE_URL}/portfolio/extract`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${accessToken}` },
+      body: formData,
+    });
+  } catch (err) {
+    throw { status: 0, message: 'SkillBridge portfolio AI service is currently unavailable. Please check your network connection.' };
+  }
+
   if (!res.ok) {
-    throw { status: res.status, message: 'Failed to extract portfolio points from CV.' };
+    const body = await res.json().catch(() => ({}));
+    throw { status: res.status, message: body.message ?? body.error ?? 'Failed to extract portfolio points from CV.' };
   }
   return res.json();
 }

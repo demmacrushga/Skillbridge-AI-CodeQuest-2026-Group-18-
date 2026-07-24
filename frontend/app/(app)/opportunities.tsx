@@ -17,7 +17,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useAuth } from '@/context/AuthContext';
-import { colors, typography, spacing, radius } from '@/constants/theme';
+import { useTheme, useThemeStyles } from '@/context/ThemeContext';
+import { typography, spacing, radius, type ThemeColors } from '@/constants/theme';
 import { SkeletonJobCard } from '@/components/ui/SkeletonCard';
 import { AnimatedFadeIn, AnimatedPressable, ActiveText } from '@/components/ui/AnimatedView';
 import {
@@ -34,10 +35,10 @@ import {
 
 /* ── Helpers ─────────────────────────────────────── */
 
-function scoreColor(score: number) {
-  if (score >= 70) return colors.secondary;
-  if (score >= 40) return colors.tertiary;
-  return colors.onSurfaceVariant;
+function scoreColor(score: number, secondary: string = '#2563EB', tertiary: string = '#3B82F6', textMuted: string = '#475569') {
+  if (score >= 70) return secondary;
+  if (score >= 40) return tertiary;
+  return textMuted;
 }
 
 const FILTER_TABS = [
@@ -61,6 +62,8 @@ function ApplyModal({
   onClose: () => void;
   onSubmit: (pitch: string) => void;
 }) {
+  const { colors } = useTheme();
+  const styles = useThemeStyles(createStyles);
   const [pitch, setPitch] = useState('');
 
   return (
@@ -127,6 +130,8 @@ function MatchCard({
   onApply: () => void;
   isApplying: boolean;
 }) {
+  const { colors } = useTheme();
+  const styles = useThemeStyles(createStyles);
   const o = match.opportunity;
   const accent = scoreColor(match.matchScore);
   const deadlineStr = o.deadline
@@ -256,6 +261,8 @@ function MatchCard({
 
 export default function OpportunitiesScreen() {
   const { state } = useAuth();
+  const { colors } = useTheme();
+  const styles = useThemeStyles(createStyles);
   const token = state.accessToken;
 
   const [matches, setMatches] = useState<Match[]>([]);
@@ -723,7 +730,8 @@ export default function OpportunitiesScreen() {
 
 /* ── Styles ────────────────────────────────────────── */
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.surface },
 
   /* Header */

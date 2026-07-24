@@ -15,7 +15,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useAuth } from '@/context/AuthContext';
-import { colors, typography, spacing, radius } from '@/constants/theme';
+import { useTheme, useThemeStyles } from '@/context/ThemeContext';
+import { typography, spacing, radius, type ThemeColors } from '@/constants/theme';
 import { getCareerPaths, generateRoadmap, getRoadmap, completeMilestone } from '@/services/career';
 import { type CareerPath, type Milestone, type Roadmap } from '@/types/career';
 import { type UserRole } from '@/services/auth';
@@ -24,10 +25,10 @@ import { AnimatedFadeIn, AnimatedPressable, ActiveText } from '@/components/ui/A
 // ─── Roadmap type config ──────────────────────────────────────────────────────
 
 const TYPE_CONFIG: Record<Milestone['type'], { icon: keyof typeof Ionicons.glyphMap; color: string; label: string }> = {
-  SKILL: { icon: 'book-outline', color: colors.tertiary, label: 'Skill' },
-  PROJECT: { icon: 'code-slash-outline', color: colors.secondary, label: 'Project' },
-  CERT: { icon: 'trophy-outline', color: colors.primary, label: 'Cert' },
-  EXPERIENCE: { icon: 'briefcase-outline', color: colors.tertiary, label: 'Exp' },
+  SKILL: { icon: 'book-outline', color: '#2563EB', label: 'Skill' },
+  PROJECT: { icon: 'code-slash-outline', color: '#059669', label: 'Project' },
+  CERT: { icon: 'trophy-outline', color: '#6366F1', label: 'Cert' },
+  EXPERIENCE: { icon: 'briefcase-outline', color: '#3B82F6', label: 'Exp' },
 };
 
 // ─── Career path picker config ────────────────────────────────────────────────
@@ -39,15 +40,15 @@ interface PathMeta {
 }
 
 const PATH_META: Record<string, PathMeta> = {
-  'Software Engineer': { icon: 'code-slash-outline', color: colors.tertiary, demand: 'High Demand' },
-  'Data Analyst': { icon: 'bar-chart-outline', color: colors.secondary, demand: 'Fastest Growing' },
-  'Accountant': { icon: 'calculator-outline', color: colors.onSurfaceVariant, demand: 'Evergreen' },
-  'Electrical Engineer': { icon: 'flash-outline', color: colors.tertiary, demand: 'High Demand' },
-  'Civil Engineer': { icon: 'construct-outline', color: colors.onSurfaceVariant, demand: 'Stable' },
+  'Software Engineer': { icon: 'code-slash-outline', color: '#2563EB', demand: 'High Demand' },
+  'Data Analyst': { icon: 'bar-chart-outline', color: '#059669', demand: 'Fastest Growing' },
+  'Accountant': { icon: 'calculator-outline', color: '#64748B', demand: 'Evergreen' },
+  'Electrical Engineer': { icon: 'flash-outline', color: '#2563EB', demand: 'High Demand' },
+  'Civil Engineer': { icon: 'construct-outline', color: '#64748B', demand: 'Stable' },
 };
 
 function getPathMeta(name: string): PathMeta {
-  return PATH_META[name] ?? { icon: 'briefcase-outline', color: colors.secondary, demand: 'In Demand' };
+  return PATH_META[name] ?? { icon: 'briefcase-outline', color: '#059669', demand: 'In Demand' };
 }
 
 interface LevelOption {
@@ -153,6 +154,8 @@ function GeneratingOverlay({ careerPath, role }: { careerPath: string; role: Ext
     return () => clearInterval(interval);
   }, [fadeAnim, dotAnim, jumpAnim, steps.length]);
 
+  const { colors } = useTheme();
+  const styles = useThemeStyles(createStyles);
   return (
     <SafeAreaView style={styles.generatingContainer}>
       <View style={styles.generatingVisual}>
@@ -192,7 +195,13 @@ function GeneratingOverlay({ careerPath, role }: { careerPath: string; role: Ext
 
 // ─── Skill tag input ──────────────────────────────────────────────────────────
 
-function SkillTags({ skills, onChange }: { skills: string[]; onChange: (s: string[]) => void }) {
+function SkillTagInput({
+  skills, onChange,
+}: {
+  skills: string[]; onChange: (v: string[]) => void;
+}) {
+  const { colors } = useTheme();
+  const styles = useThemeStyles(createStyles);
   const [draft, setDraft] = useState('');
   const inputRef = useRef<TextInput>(null);
 
@@ -240,6 +249,8 @@ function SkillTags({ skills, onChange }: { skills: string[]; onChange: (s: strin
 // ─── Completed milestone row ──────────────────────────────────────────────────
 
 function CompletedRow({ milestone }: { milestone: Milestone }) {
+  const { colors } = useTheme();
+  const styles = useThemeStyles(createStyles);
   const cfg = TYPE_CONFIG[milestone.type] ?? TYPE_CONFIG.SKILL;
   return (
     <View style={styles.completedRow}>
@@ -266,6 +277,8 @@ function UpNextCard({
   onNoteChange: (v: string) => void;
   pulseOpacity: Animated.Value;
 }) {
+  const { colors } = useTheme();
+  const styles = useThemeStyles(createStyles);
   const cfg = TYPE_CONFIG[milestone.type] ?? TYPE_CONFIG.SKILL;
   const [evidenceOpen, setEvidenceOpen] = useState(false);
 
@@ -332,6 +345,8 @@ function UpcomingCard({
   noteValue: string;
   onNoteChange: (v: string) => void;
 }) {
+  const { colors } = useTheme();
+  const styles = useThemeStyles(createStyles);
   const cfg = TYPE_CONFIG[milestone.type] ?? TYPE_CONFIG.SKILL;
   const [expanded, setExpanded] = useState(false);
   const [evidenceOpen, setEvidenceOpen] = useState(false);
@@ -390,6 +405,8 @@ function UpcomingCard({
 
 export default function CareerScreen() {
   const { state } = useAuth();
+  const { colors } = useTheme();
+  const styles = useThemeStyles(createStyles);
   const user = state.user;
   const role: Extract<UserRole, 'STUDENT' | 'ALUMNI'> = user?.role === 'ALUMNI' ? 'ALUMNI' : 'STUDENT';
   const levels = LEVELS_BY_ROLE[role];
@@ -762,7 +779,7 @@ export default function CareerScreen() {
                 <Text style={styles.stepTitle}>Your current skills</Text>
               </View>
 
-              <SkillTags skills={skills} onChange={setSkills} />
+              <SkillTagInput skills={skills} onChange={setSkills} />
               <Text style={styles.inputHint}>
                 Type a skill and press comma or return to add it. The AI uses these to personalise your milestones.
               </Text>
@@ -984,7 +1001,8 @@ export default function CareerScreen() {
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.surface },
   centered: {
     flex: 1, justifyContent: 'center', alignItems: 'center',

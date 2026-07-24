@@ -1,7 +1,9 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Tabs } from 'expo-router';
+import React, { useMemo } from 'react';
 import { StyleSheet } from 'react-native';
-import { colors, typography, spacing } from '@/constants/theme';
+import { typography, spacing } from '@/constants/theme';
+import { useTheme } from '@/context/ThemeContext';
 import { GlobalChatbot } from '@/components/GlobalChatbot';
 import { GlobalToast } from '@/components/ui/Toast';
 import { useAuth } from '@/context/AuthContext';
@@ -19,10 +21,30 @@ function TabIcon({ name, focusedName, color, focused }: TabIconProps) {
 
 export default function AppLayout() {
   const { state } = useAuth();
+  const { colors } = useTheme();
   const role = state.user?.role;
   const isRecruiter = role === 'RECRUITER';
   const isAlumni = role === 'ALUMNI';
   const isStudent = !isRecruiter && !isAlumni;
+
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        tabBar: {
+          backgroundColor: colors.surfaceCard,
+          borderTopColor: colors.outlineVariant,
+          borderTopWidth: 1,
+          height: 72,
+          paddingTop: spacing.xs,
+          paddingBottom: spacing.sm,
+        },
+        tabLabel: {
+          ...typography.labelSm,
+          marginTop: spacing.xs,
+        },
+      }),
+    [colors]
+  );
 
   return (
     <>
@@ -161,18 +183,3 @@ export default function AppLayout() {
     </>
   );
 }
-
-const styles = StyleSheet.create({
-  tabBar: {
-    backgroundColor: colors.surfaceCard,
-    borderTopColor: colors.outlineVariant,
-    borderTopWidth: 1,
-    height: 72,
-    paddingTop: spacing.xs,
-    paddingBottom: spacing.sm,
-  },
-  tabLabel: {
-    ...typography.labelSm,
-    marginTop: spacing.xs,
-  },
-});

@@ -15,31 +15,19 @@ import { router, useFocusEffect, Redirect } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { getUnreadCount } from '@/services/notification';
 import { useAuth } from '@/context/AuthContext';
-import { colors, typography, spacing, radius } from '@/constants/theme';
+import { useTheme, useThemeStyles } from '@/context/ThemeContext';
+import { typography, spacing, radius, type ThemeColors } from '@/constants/theme';
 import { getRoadmap } from '@/services/career';
 import { type Milestone, type Roadmap } from '@/types/career';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { AnimatedFadeIn, AnimatedPressable, ActiveText } from '@/components/ui/AnimatedView';
 
 const TYPE_CONFIG: Record<Milestone['type'], { icon: keyof typeof Ionicons.glyphMap; color: string; label: string }> = {
-  SKILL: { icon: 'book-outline', color: colors.tertiary, label: 'Skill' },
-  PROJECT: { icon: 'code-slash-outline', color: colors.secondary, label: 'Project' },
-  CERT: { icon: 'trophy-outline', color: colors.primary, label: 'Cert' },
-  EXPERIENCE: { icon: 'briefcase-outline', color: colors.tertiary, label: 'Experience' },
+  SKILL: { icon: 'book-outline', color: '#2563EB', label: 'Skill' },
+  PROJECT: { icon: 'code-slash-outline', color: '#059669', label: 'Project' },
+  CERT: { icon: 'trophy-outline', color: '#6366F1', label: 'Cert' },
+  EXPERIENCE: { icon: 'briefcase-outline', color: '#3B82F6', label: 'Experience' },
 };
-
-function usePulse() {
-  const anim = useRef(new Animated.Value(1)).current;
-  useEffect(() => {
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(anim, { toValue: 0.25, duration: 900, useNativeDriver: true }),
-        Animated.timing(anim, { toValue: 1, duration: 900, useNativeDriver: true }),
-      ])
-    ).start();
-  }, [anim]);
-  return anim;
-}
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const GRID_PADDING = spacing.lg * 2; // left + right padding
@@ -56,6 +44,7 @@ interface QuickLinkProps {
 }
 
 function QuickLink({ icon, label, color, onPress, index }: QuickLinkProps) {
+  const styles = useThemeStyles(createStyles);
   return (
     <AnimatedFadeIn delay={400 + index * 60} duration={400}>
       <AnimatedPressable
@@ -72,8 +61,23 @@ function QuickLink({ icon, label, color, onPress, index }: QuickLinkProps) {
   );
 }
 
+function usePulse() {
+  const anim = useRef(new Animated.Value(1)).current;
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(anim, { toValue: 0.25, duration: 900, useNativeDriver: true }),
+        Animated.timing(anim, { toValue: 1, duration: 900, useNativeDriver: true }),
+      ])
+    ).start();
+  }, [anim]);
+  return anim;
+}
+
 export default function DashboardScreen() {
   const { state } = useAuth();
+  const { colors } = useTheme();
+  const styles = useThemeStyles(createStyles);
   const user = state.user;
   const pulseOpacity = usePulse();
 
@@ -424,7 +428,8 @@ export default function DashboardScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.surface },
 
   /* Header */

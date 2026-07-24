@@ -19,7 +19,8 @@ import * as Clipboard from 'expo-clipboard';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { useAuth } from '@/context/AuthContext';
-import { colors, typography, spacing, radius } from '@/constants/theme';
+import { useTheme, useThemeStyles } from '@/context/ThemeContext';
+import { colors, typography, spacing, radius, type ThemeColors } from '@/constants/theme';
 import { AnimatedFadeIn, AnimatedPressable, ActiveText } from '@/components/ui/AnimatedView';
 import {
   createPortfolioItem,
@@ -67,6 +68,8 @@ function ItemCard({
   isDeleting: boolean;
   isRequesting: boolean;
 }) {
+  const { colors } = useTheme();
+  const styles = useThemeStyles(createStyles);
   const [expanded, setExpanded] = useState(false);
   const statusColor = STATUS_COLOR[item.verificationStatus] ?? colors.outline;
   const statusLabel = STATUS_LABEL[item.verificationStatus] ?? item.verificationStatus;
@@ -171,6 +174,8 @@ function AddItemModal({
   onClose: () => void;
   onAdd: (itemType: string, title: string, description: string, url: string) => void;
 }) {
+  const { colors } = useTheme();
+  const styles = useThemeStyles(createStyles);
   const [itemType, setItemType] = useState('PROJECT');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -278,6 +283,9 @@ function AiCvScannerModal({
   onClose: () => void;
   onImportItems: (items: Array<{ itemType: string; title: string; description: string; externalUrl?: string }>) => Promise<void>;
 }) {
+  const { colors } = useTheme();
+  const styles = useThemeStyles(createStyles);
+  const { state } = useAuth();
   const [selectedFile, setSelectedFile] = useState<DocumentPicker.DocumentPickerAsset | null>(null);
   const [cvText, setCvText] = useState('');
   const [isScanning, setIsScanning] = useState(false);
@@ -528,6 +536,8 @@ function AiCvScannerModal({
 
 export default function PortfolioScreen() {
   const { state } = useAuth();
+  const { colors } = useTheme();
+  const styles = useThemeStyles(createStyles);
   const [items, setItems] = useState<PortfolioItem[]>([]);
   const [activeFilter, setActiveFilter] = useState<'ALL' | 'PROJECT' | 'CERTIFICATION' | 'APPROVED' | 'PENDING'>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
@@ -874,7 +884,8 @@ export default function PortfolioScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.surface },
   header: {
     flexDirection: 'row',
